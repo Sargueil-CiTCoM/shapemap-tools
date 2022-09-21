@@ -288,8 +288,8 @@ def plot_all(output_path, profiles):
             # curdf[["seqNum", "mean"]]
             # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.shape",sep="\t",
             # header=None,index=False)
-
+def main():
+    fire.Fire(aggregate_replicates)
 
 if __name__ == "__main__":
-
-    fire.Fire(aggregate_replicates)
+    main()
