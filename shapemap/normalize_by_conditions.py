@@ -8,6 +8,7 @@ import os
 import fire
 import subprocess as sp
 import glob
+import utils
 
 # import multiprocessing as mp
 
@@ -16,14 +17,6 @@ shapemapper_path = "../shapemapper2/internals/bin/"
 norm_script_path = os.path.join(shapemapper_path, "normalize_profiles.py")
 tab_to_shape_path = os.path.join(shapemapper_path, "tab_to_shape.py")
 render_figures_path = os.path.join(shapemapper_path, "render_figures.py")
-
-base_path = "{path}/{condition}/"
-profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
-shape_pattern = base_path + "{condition}_{seqid}.shape"
-map_pattern = base_path + "{condition}_{seqid}.map"
-histo_pattern = base_path + "{condition}_{seqid}_histograms.pdf"
-plot_pattern = base_path + "{condition}_{seqid}_profiles.pdf"
-title_pattern = "{seqid} {condition}"
 
 
 def runNormalizeShapemapper(tonorm, normout):
@@ -77,20 +70,20 @@ def runRenderFigures(
 
 def normalize_through_all(path, outputpath, sequences, conditions):
     tonorm = [
-        profile_pattern.format(path=path, condition=condition, seqid=seqid)
+        utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         for condition in conditions
         for seqid in sequences
         if os.path.exists(
-            profile_pattern.format(path=path, condition=condition, seqid=seqid)
+            utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         )
     ]
 
     normout = [
-        profile_pattern.format(path=outputpath, condition=condition, seqid=seqid)
+        utils.profile_pattern.format(path=outputpath, condition=condition, seqid=seqid)
         for condition in conditions
         for seqid in sequences
         if os.path.exists(
-            profile_pattern.format(path=path, condition=condition, seqid=seqid)
+            utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         )
     ]
 
@@ -100,25 +93,27 @@ def normalize_through_all(path, outputpath, sequences, conditions):
         for seqid in sequences:
             print(f"Start {cond} ({seqid})")
             runTabToShape(
-                profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
-                map_file=map_pattern.format(
+                utils.profile_pattern.format(
                     path=outputpath, condition=cond, seqid=seqid
                 ),
-                shape_file=shape_pattern.format(
+                map_file=utils.map_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+                shape_file=utils.shape_pattern.format(
                     path=outputpath, condition=cond, seqid=seqid
                 ),
             )
             runRenderFigures(
-                profile_pattern.format(
+                utils.profile_pattern.format(
                     path=outputpath,
                     condition=cond,
                     seqid=seqid,
                 ),
-                title=title_pattern.format(condition=cond, seqid=seqid),
-                plot_file=plot_pattern.format(
+                title=utils.title_pattern.format(condition=cond, seqid=seqid),
+                plot_file=utils.plot_profiles_pattern.format(
                     path=outputpath, condition=cond, seqid=seqid
                 ),
-                histo_file=histo_pattern.format(
+                histo_file=utils.plot_histo_pattern.format(
                     path=outputpath, condition=cond, seqid=seqid
                 ),
             )
@@ -127,18 +122,18 @@ def normalize_through_all(path, outputpath, sequences, conditions):
 def normalize_through_conditions(path, outputpath, seqid, conditions):
 
     tonorm = [
-        profile_pattern.format(path=path, condition=condition, seqid=seqid)
+        utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         for condition in conditions
         if os.path.exists(
-            profile_pattern.format(path=path, condition=condition, seqid=seqid)
+            utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         )
     ]
 
     normout = [
-        profile_pattern.format(path=outputpath, condition=condition, seqid=seqid)
+        utils.profile_pattern.format(path=outputpath, condition=condition, seqid=seqid)
         for condition in conditions
         if os.path.exists(
-            profile_pattern.format(path=path, condition=condition, seqid=seqid)
+            utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         )
     ]
 
@@ -147,21 +142,25 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
     for cond in conditions:
         print(f"Start {cond} ({seqid})")
         runTabToShape(
-            profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
-            map_file=map_pattern.format(path=outputpath, condition=cond, seqid=seqid),
-            shape_file=shape_pattern.format(
+            utils.profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
+            map_file=utils.map_pattern.format(
+                path=outputpath, condition=cond, seqid=seqid
+            ),
+            shape_file=utils.shape_pattern.format(
                 path=outputpath, condition=cond, seqid=seqid
             ),
         )
         runRenderFigures(
-            profile_pattern.format(
+            utils.profile_pattern.format(
                 path=outputpath,
                 condition=cond,
                 seqid=seqid,
             ),
-            title=title_pattern.format(condition=cond, seqid=seqid),
-            plot_file=plot_pattern.format(path=outputpath, condition=cond, seqid=seqid),
-            histo_file=histo_pattern.format(
+            title=utils.title_pattern.format(condition=cond, seqid=seqid),
+            plot_file=utils.plot_profiles_pattern.format(
+                path=outputpath, condition=cond, seqid=seqid
+            ),
+            histo_file=utils.plot_histo_pattern.format(
                 path=outputpath, condition=cond, seqid=seqid
             ),
         )
@@ -175,14 +174,7 @@ def main(globpath, outputpath, mode="conditions"):
     sequences = set()
     for cond in conditions:
         os.makedirs(os.path.join(outputpath, cond), exist_ok=True)
-        sequences = sequences.union(
-            {
-                os.path.splitext(os.path.basename(path))[0][(len(cond) + 1) :]
-                for path in glob.glob(
-                    shape_pattern.format(path=globpath, condition=cond, seqid="*")
-                )
-            }
-        )
+    sequences = utils.get_sequences(globpath, conditions)
 
     if mode == "conditions":
         for seqid in sequences:
@@ -195,7 +187,9 @@ def main(globpath, outputpath, mode="conditions"):
         normalize_through_all(*args)
         # pool.apply_async(normalize_through_conditions, args)
     else:
-        raise Exception(f"Invalid mode {mode} Your must choose between: all, conditions")
+        raise Exception(
+            f"Invalid mode {mode} Your must choose between: all, conditions"
+        )
 
 
 #    #pool.close()

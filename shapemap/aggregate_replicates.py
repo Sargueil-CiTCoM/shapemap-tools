@@ -11,34 +11,10 @@ import copy
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import gc
-from ruamel.yaml import YAML
 import fire
-
-yaml = YAML()
+import utils
 
 # pd.set_option("display.max_rows", None)  # or 1000
-
-base_path = "{path}/{condition}/"
-profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
-shape_pattern = base_path + "{condition}_{seqid}.shape"
-map_pattern = base_path + "{condition}_{seqid}.map"
-title_pattern = "{seqid} {condition}"
-aggregate_pattern = base_path + "{condition}_{seqid}_aggregated.tsv"
-plot_pattern = base_path + "{condition}_{seqid}_aggregated.svg"
-plot_full_pattern = base_path + "{condition}_{seqid}_aggregated_full.svg"
-
-
-class ReactivityThreshold:
-    INVALID = -0.3
-    LOW = 0.40
-    MEDIUM = 0.85
-    HIGH = 1.0
-
-    COLOR_INVALID = "grey"
-    COLOR_NONE = "white"
-    COLOR_LOW = "yellow"
-    COLOR_MEDIUM = "orange"
-    COLOR_HIGH = "red"
 
 
 def plot_aggregate(
@@ -62,11 +38,7 @@ def plot_aggregate(
     aggregated = aggregated.sort_index()
     meanstdev = aggregated.loc[:, ["xlabel", "mean", "stdev"]].replace(-10, np.NaN)
 
-    reactivities_cols = [
-        col
-        for col in aggregated.columns
-        if col[1] == "reactivity"
-    ]
+    reactivities_cols = [col for col in aggregated.columns if col[1] == "reactivity"]
     reactivities_cols += [("xlabel", "")]
 
     ax = replicates[reactivities_cols].plot(
@@ -86,8 +58,8 @@ def plot_aggregate(
         colormap=cm.cubehelix,
         linewidth=0.5,
     )
-    ax.set_xlabel('Position')
-    ax.set_ylabel('Reactivity')
+    ax.set_xlabel("Position")
+    ax.set_ylabel("Reactivity")
     # ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     plt.margins(0)
     plt.title(title, loc="left")
@@ -114,27 +86,27 @@ def plot_aggregate(
         nrows=1, ncols=1, sharex=True, figsize=(len(aggregated) / 4, 4)
     )
 
-    aggregated["color"] = ReactivityThreshold.COLOR_NONE
+    aggregated["color"] = utils.ReactivityThreshold.COLOR_NONE
     aggregated.loc[
-        (aggregated["mean"] > ReactivityThreshold.HIGH), "color"
-    ] = ReactivityThreshold.COLOR_HIGH
-    aggregated.loc[
-        (
-            (aggregated["mean"] <= ReactivityThreshold.HIGH)
-            & (aggregated["mean"] > ReactivityThreshold.MEDIUM)
-        ),
-        "color",
-    ] = ReactivityThreshold.COLOR_MEDIUM
+        (aggregated["mean"] > utils.ReactivityThreshold.HIGH), "color"
+    ] = utils.ReactivityThreshold.COLOR_HIGH
     aggregated.loc[
         (
-            (aggregated["mean"] <= ReactivityThreshold.MEDIUM)
-            & (aggregated["mean"] > ReactivityThreshold.LOW)
+            (aggregated["mean"] <= utils.ReactivityThreshold.HIGH)
+            & (aggregated["mean"] > utils.ReactivityThreshold.MEDIUM)
         ),
         "color",
-    ] = ReactivityThreshold.COLOR_LOW
+    ] = utils.ReactivityThreshold.COLOR_MEDIUM
     aggregated.loc[
-        (aggregated["mean"] < ReactivityThreshold.INVALID), "color"
-    ] = ReactivityThreshold.COLOR_INVALID
+        (
+            (aggregated["mean"] <= utils.ReactivityThreshold.MEDIUM)
+            & (aggregated["mean"] > utils.ReactivityThreshold.LOW)
+        ),
+        "color",
+    ] = utils.ReactivityThreshold.COLOR_LOW
+    aggregated.loc[
+        (aggregated["mean"] < utils.ReactivityThreshold.INVALID), "color"
+    ] = utils.ReactivityThreshold.COLOR_INVALID
 
     aggregated.loc[(aggregated["mean"] == -10), "stdev"] = np.NaN
     aggregated.loc[(aggregated["mean"] == -10), "mean"] = np.NaN
@@ -165,8 +137,8 @@ def plot_aggregate(
         linewidth=0.5,
     )
 
-    ax.set_xlabel('Position')
-    ax.set_ylabel('Reactivity')
+    ax.set_xlabel("Position")
+    ax.set_ylabel("Reactivity")
     plt.margins(0)
     plt.title(title, loc="left")
     plt.legend(loc="upper left")
@@ -179,52 +151,14 @@ def plot_aggregate(
         open(output, "a").close()
 
 
-def read_config(config_path: str):
-    with open(config_path, "r") as fd:
-        config = yaml.load(fd)
-
-        for path in config["paths"]:
-            os.path.exists(path)
-
-        for condname, condvals in config["conditions"].items():
-            for cond_rep_name, cond_rep_path in condvals.items():
-                os.path.exists(
-                    os.path.join(config["paths"][cond_rep_name], cond_rep_path)
-                )
-        return config
-
-
-def get_sequences(config):
-    sequences = set()
-    paths = config["paths"]
-    conditions = config["conditions"]
-
-    for rid, rep_path in paths.items():
-        for condname, condvals in conditions.items():
-            if rid in condvals:
-                # path = base_path.format(path=rep_path, condition=condvals[rid])
-                condlen = len(condvals[rid]) + 1
-                pattern = shape_pattern.format(
-                    path=rep_path, condition=condvals[rid], seqid="*"
-                )
-
-                sequences = sequences.union(
-                    {
-                        os.path.splitext(os.path.basename(path))[0][condlen:]
-                        for path in glob.glob(pattern)
-                    }
-                )
-    return sequences
-
-
 def aggregate_replicates(
     output_path: str = "output", input_dirs: [str] = [], config_path: str = None
 ):
-    config = read_config(config_path)
-    sequences = get_sequences(config)
+    config = utils.Config(config_path)
+    sequences = config.sequences
     profiles = {}
 
-    for condname, reps in config["conditions"].items():
+    for condname, reps in config.conditions.items():
         print(f"Aggregating {condname}")
         profiles[condname] = {}
         for seqid in sequences:
@@ -232,8 +166,8 @@ def aggregate_replicates(
             for rep_id, rep_path in reps.items():
                 try:
                     curdf = pd.read_csv(
-                        map_pattern.format(
-                            path=config["paths"][rep_id],
+                        utils.map_pattern.format(
+                            path=config.paths[rep_id],
                             condition=rep_path,
                             seqid=seqid,
                         ),
@@ -275,12 +209,12 @@ def aggregate_replicates(
     os.makedirs(output_path, exist_ok=True)
     for condname, seqs_profiles in profiles.items():
         os.makedirs(
-            base_path.format(path=output_path, condition=condname), exist_ok=True
+            utils.base_path.format(path=output_path, condition=condname), exist_ok=True
         )
         for seqid, profile in seqs_profiles.items():
             if profile is not None:
                 profile.to_csv(
-                    aggregate_pattern.format(
+                    utils.aggregate_pattern.format(
                         path=output_path, condition=condname, seqid=seqid
                     ),
                     sep="\t",
@@ -297,7 +231,7 @@ def write_shape(output_path, condition, seqid, profile):
     firstrows.index.names = ["seqNum"]
     shprofile = pd.concat([firstrows, shprofile])
     shprofile.to_csv(
-        shape_pattern.format(path=output_path, condition=condition, seqid=seqid),
+        utils.shape_pattern.format(path=output_path, condition=condition, seqid=seqid),
         sep="\t",
         float_format="%.4f",
         header=False,
@@ -319,7 +253,7 @@ def write_map(output_path, condition, seqid, profile):
     firstrows.index.names = ["seqNum"]
     mapprofile = pd.concat([firstrows, mapprofile])
     mapprofile.to_csv(
-        map_pattern.format(path=output_path, condition=condition, seqid=seqid),
+        utils.map_pattern.format(path=output_path, condition=condition, seqid=seqid),
         sep="\t",
         float_format="%.4f",
         header=False,
@@ -335,10 +269,10 @@ def plot_all(output_path, profiles):
             if curdf is not None:
                 plot_aggregate(
                     curdf,
-                    fulloutput=plot_full_pattern.format(
+                    fulloutput=utils.plot_full_pattern.format(
                         path=output_path, condition=cond, seqid=seqid
                     ),
-                    output=plot_pattern.format(
+                    output=utils.plot_pattern.format(
                         path=output_path, condition=cond, seqid=seqid
                     ),
                     title=f"{cond} - {seqid} Reactivity",
