@@ -1,0 +1,361 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+import glob
+import pandas as pd
+import numpy as np
+import os
+import copy
+from matplotlib import cm
+import matplotlib.pyplot as plt
+import gc
+from ruamel.yaml import YAML
+import fire
+
+yaml = YAML()
+
+# pd.set_option("display.max_rows", None)  # or 1000
+
+base_path = "{path}/{condition}/"
+profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
+shape_pattern = base_path + "{condition}_{seqid}.shape"
+map_pattern = base_path + "{condition}_{seqid}.map"
+title_pattern = "{seqid} {condition}"
+aggregate_pattern = base_path + "{condition}_{seqid}_aggregated.tsv"
+plot_pattern = base_path + "{condition}_{seqid}_aggregated.svg"
+plot_full_pattern = base_path + "{condition}_{seqid}_aggregated_full.svg"
+
+
+class ReactivityThreshold:
+    INVALID = -0.3
+    LOW = 0.40
+    MEDIUM = 0.85
+    HIGH = 1.0
+
+    COLOR_INVALID = "grey"
+    COLOR_NONE = "white"
+    COLOR_LOW = "yellow"
+    COLOR_MEDIUM = "orange"
+    COLOR_HIGH = "red"
+
+
+def plot_aggregate(
+    aggregated: pd.DataFrame,
+    fulloutput="fig.full.svg",
+    output="fig.svg",
+    title: str = "Aggregated reactivity",
+    format="svg",
+):
+    aggregated = copy.deepcopy(aggregated)
+    aggregated["xlabel"] = (
+        aggregated.index.get_level_values("seqNum").astype(str)
+        + "\n"
+        + aggregated.index.get_level_values("sequence").astype(str)
+    )
+    replicates = aggregated.loc[
+        :,
+        aggregated.columns.drop(["mean", "stdev", "sem", "mad"]),
+    ].replace(-10, np.NaN)
+
+    aggregated = aggregated.sort_index()
+    meanstdev = aggregated.loc[:, ["xlabel", "mean", "stdev"]].replace(-10, np.NaN)
+
+    reactivities_cols = [
+        col
+        for col in aggregated.columns
+        if col[1] == "reactivity"
+    ]
+    reactivities_cols += [("xlabel", "")]
+
+    ax = replicates[reactivities_cols].plot(
+        x="xlabel",
+        kind="bar",
+        width=0.7,
+        stacked=False,
+        figsize=(len(aggregated) / 3.5, 4),
+        align="center",
+        xticks=np.arange(0, len(aggregated) + 1, 1),
+    )
+    ax = meanstdev[["mean", "xlabel"]].plot(
+        x="xlabel",
+        y="mean",
+        drawstyle="steps-mid",
+        ax=ax,
+        colormap=cm.cubehelix,
+        linewidth=0.5,
+    )
+    ax.set_xlabel('Position')
+    ax.set_ylabel('Reactivity')
+    # ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+    plt.margins(0)
+    plt.title(title, loc="left")
+    plt.legend(loc="upper left")
+    ax.errorbar(
+        meanstdev.index.get_level_values("seqNum") - 1,
+        meanstdev["mean"],
+        yerr=meanstdev["stdev"],
+        fmt="",
+        color="k",
+        ls="none",
+        capsize=4,
+        linewidth=0.5,
+    )
+    try:
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig(fulloutput, format=format)
+    except ValueError as e:
+        print(f"Unable to save fullplot: {e}")
+        open(fulloutput, "a").close()
+
+    fig, ax = plt.subplots(
+        nrows=1, ncols=1, sharex=True, figsize=(len(aggregated) / 4, 4)
+    )
+
+    aggregated["color"] = ReactivityThreshold.COLOR_NONE
+    aggregated.loc[
+        (aggregated["mean"] > ReactivityThreshold.HIGH), "color"
+    ] = ReactivityThreshold.COLOR_HIGH
+    aggregated.loc[
+        (
+            (aggregated["mean"] <= ReactivityThreshold.HIGH)
+            & (aggregated["mean"] > ReactivityThreshold.MEDIUM)
+        ),
+        "color",
+    ] = ReactivityThreshold.COLOR_MEDIUM
+    aggregated.loc[
+        (
+            (aggregated["mean"] <= ReactivityThreshold.MEDIUM)
+            & (aggregated["mean"] > ReactivityThreshold.LOW)
+        ),
+        "color",
+    ] = ReactivityThreshold.COLOR_LOW
+    aggregated.loc[
+        (aggregated["mean"] < ReactivityThreshold.INVALID), "color"
+    ] = ReactivityThreshold.COLOR_INVALID
+
+    aggregated.loc[(aggregated["mean"] == -10), "stdev"] = np.NaN
+    aggregated.loc[(aggregated["mean"] == -10), "mean"] = np.NaN
+    aggregated["xlabel_rot"] = (
+        aggregated.index.get_level_values("seqNum").astype(str)
+        + " - "
+        + aggregated.index.get_level_values("sequence").astype(str)
+    )
+
+    aggregated.plot(
+        ax=ax,
+        # x="xlabel_rot",
+        rot=70,
+        y="mean",
+        kind="bar",
+        width=1,
+        color=aggregated["color"],
+        yerr="stdev",
+        stacked=False,
+        capsize=3,
+    )
+    ax = meanstdev[["mean", "xlabel"]].plot(
+        x="xlabel",
+        y="mean",
+        drawstyle="steps-mid",
+        ax=ax,
+        colormap=cm.cubehelix,
+        linewidth=0.5,
+    )
+
+    ax.set_xlabel('Position')
+    ax.set_ylabel('Reactivity')
+    plt.margins(0)
+    plt.title(title, loc="left")
+    plt.legend(loc="upper left")
+    try:
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig(output, format=format)
+    except ValueError as e:
+        print(f"Unable to save plot: {e}")
+        open(output, "a").close()
+
+
+def read_config(config_path: str):
+    with open(config_path, "r") as fd:
+        config = yaml.load(fd)
+
+        for path in config["paths"]:
+            os.path.exists(path)
+
+        for condname, condvals in config["conditions"].items():
+            for cond_rep_name, cond_rep_path in condvals.items():
+                os.path.exists(
+                    os.path.join(config["paths"][cond_rep_name], cond_rep_path)
+                )
+        return config
+
+
+def get_sequences(config):
+    sequences = set()
+    paths = config["paths"]
+    conditions = config["conditions"]
+
+    for rid, rep_path in paths.items():
+        for condname, condvals in conditions.items():
+            if rid in condvals:
+                # path = base_path.format(path=rep_path, condition=condvals[rid])
+                condlen = len(condvals[rid]) + 1
+                pattern = shape_pattern.format(
+                    path=rep_path, condition=condvals[rid], seqid="*"
+                )
+
+                sequences = sequences.union(
+                    {
+                        os.path.splitext(os.path.basename(path))[0][condlen:]
+                        for path in glob.glob(pattern)
+                    }
+                )
+    return sequences
+
+
+def aggregate_replicates(
+    output_path: str = "output", input_dirs: [str] = [], config_path: str = None
+):
+    config = read_config(config_path)
+    sequences = get_sequences(config)
+    profiles = {}
+
+    for condname, reps in config["conditions"].items():
+        print(f"Aggregating {condname}")
+        profiles[condname] = {}
+        for seqid in sequences:
+            repsdf = {}
+            for rep_id, rep_path in reps.items():
+                try:
+                    curdf = pd.read_csv(
+                        map_pattern.format(
+                            path=config["paths"][rep_id],
+                            condition=rep_path,
+                            seqid=seqid,
+                        ),
+                        sep="\t",
+                        names=["seqNum", "reactivity", "sterr", "sequence"],
+                    )
+                    curdf = curdf.set_index(["seqNum", "sequence"])
+                    curdf = curdf.replace(-999, np.NaN)
+                    repsdf[rep_id] = curdf
+                    # profiles[condname][seqid][rep_id] = curdf["reactivity"]
+
+                except FileNotFoundError:
+                    pass
+            if len(repsdf) > 0:
+                profiles[condname][seqid] = pd.concat(repsdf, axis=1)
+                conds = [
+                    col
+                    for col in profiles[condname][seqid].columns
+                    if col[1] == "reactivity"
+                ]
+                profiles[condname][seqid]["mean"] = profiles[condname][seqid][
+                    conds
+                ].mean(axis=1)
+                profiles[condname][seqid]["stdev"] = profiles[condname][seqid][
+                    conds
+                ].std(axis=1, ddof=1)
+                profiles[condname][seqid]["median"] = profiles[condname][seqid][
+                    conds
+                ].median(axis=1)
+                profiles[condname][seqid]["sem"] = profiles[condname][seqid][conds].sem(
+                    axis=1, ddof=1
+                )
+                profiles[condname][seqid]["mad"] = profiles[condname][seqid][conds].mad(
+                    axis=1
+                )
+            else:
+                profiles[condname][seqid] = None
+
+    os.makedirs(output_path, exist_ok=True)
+    for condname, seqs_profiles in profiles.items():
+        os.makedirs(
+            base_path.format(path=output_path, condition=condname), exist_ok=True
+        )
+        for seqid, profile in seqs_profiles.items():
+            if profile is not None:
+                profile.to_csv(
+                    aggregate_pattern.format(
+                        path=output_path, condition=condname, seqid=seqid
+                    ),
+                    sep="\t",
+                )
+                write_shape(output_path, condname, seqid, profile)
+                write_map(output_path, condname, seqid, profile)
+    plot_all(output_path, profiles)
+
+
+def write_shape(output_path, condition, seqid, profile):
+    shprofile = profile.reset_index(level="sequence")[["mean"]]
+    idxmin = shprofile.index.min()
+    firstrows = pd.DataFrame({"mean": np.full(idxmin - 1, -10)}, index=range(1, idxmin))
+    firstrows.index.names = ["seqNum"]
+    shprofile = pd.concat([firstrows, shprofile])
+    shprofile.to_csv(
+        shape_pattern.format(path=output_path, condition=condition, seqid=seqid),
+        sep="\t",
+        float_format="%.4f",
+        header=False,
+    )
+    return shprofile
+
+
+def write_map(output_path, condition, seqid, profile):
+    mapprofile = profile.reset_index(level="sequence")[["mean", "stdev", "sequence"]]
+    idxmin = mapprofile.index.min()
+    firstrows = pd.DataFrame(
+        {
+            "mean": np.full(idxmin - 1, -10),
+            "stdev": np.zeros(idxmin - 1),
+            "sequence": np.full(idxmin - 1, "N"),
+        },
+        index=range(1, idxmin),
+    )
+    firstrows.index.names = ["seqNum"]
+    mapprofile = pd.concat([firstrows, mapprofile])
+    mapprofile.to_csv(
+        map_pattern.format(path=output_path, condition=condition, seqid=seqid),
+        sep="\t",
+        float_format="%.4f",
+        header=False,
+    )
+    return mapprofile
+
+
+def plot_all(output_path, profiles):
+    for cond, seqs_profiles in profiles.items():
+        print(f"Plotting {cond}")
+        for seqid, curdf in seqs_profiles.items():
+            print(f"Plotting {seqid}")
+            if curdf is not None:
+                plot_aggregate(
+                    curdf,
+                    fulloutput=plot_full_pattern.format(
+                        path=output_path, condition=cond, seqid=seqid
+                    ),
+                    output=plot_pattern.format(
+                        path=output_path, condition=cond, seqid=seqid
+                    ),
+                    title=f"{cond} - {seqid} Reactivity",
+                )
+                gc.collect()
+            # curdf.to_csv(f"{cond}/{cond}_{aptaid}_aggregated.tsv",sep="\t")
+            # curdf = curdf.reset_index(drop=False)
+            # curdf["mean"] = curdf["mean"].fillna(-999)
+            # curdf["stdev"] = curdf["stdev"].fillna(0)
+            # curdf[["seqNum", "mean", "stdev", "sequence"]]
+            # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.map",sep="\t",
+            # index=False, header=None)
+            # curdf[["seqNum", "mean"]]
+            # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.shape",sep="\t",
+            # header=None,index=False)
+
+
+if __name__ == "__main__":
+
+    fire.Fire(aggregate_replicates)
