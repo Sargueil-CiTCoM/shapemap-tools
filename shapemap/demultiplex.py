@@ -16,12 +16,12 @@ def basename_without_ext(path):
 
 
 def run_cutadapt_trimming(
-    readfq: str, matefq: str = None, outreadfq=None, outmatefq=None
+    readfq: str, matefq: str = None, outreadfq=None, outmatefq=None, cores=8
 ):
     cmd = [
         "cutadapt",
         "-j",
-        "8",
+        cores,
         "-a",
         "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
         "-A",
@@ -38,12 +38,13 @@ def run_cutadapt_trimming(
 
 
 def run_cutadapt_demultiplex(
-    readfq: str, tagfile_path, outreadfq=None, matefq: str = None, outmatefq=None
+    readfq: str, tagfile_path, outreadfq=None, matefq: str = None, outmatefq=None,
+    cores=8
 ):
     cmd = [
         "cutadapt",
         "-j",
-        "8",
+        cores,
         "-e",
         "0.15",
         "--no-indels",
@@ -179,6 +180,7 @@ def demultiplex(
     R2: [str] = None,
     groupcolumn=None,
     output_path="output",
+    cores=8
 ):
     os.makedirs(output_path, exist_ok=True)
     tagfile_path = prepare_tagfile(tagfile, groupcolumn, output_path)
@@ -211,7 +213,8 @@ def demultiplex(
             # )
             logger.info("Trimming end {os.path.basename(readfq)}")
             run_cutadapt_trimming(
-                readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq
+                readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq,
+                cores=cores
             )
             # run_bbduk(
             #    readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq
@@ -239,6 +242,7 @@ def demultiplex(
                 tagfile_path=tagfile_path + ".fa",
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
+                cores=cores
             )
             # run_fastq_multx(
             #    readfq=trimmed_readfq,
@@ -261,7 +265,7 @@ def demultiplex(
             #    outreadfq=trimmed_readfq,
             #    outreadfq_unpaired=trimmed_readfq_unpaired,
             # )
-            run_cutadapt_trimming(readfq, outreadfq=trimmed_readfq)
+            run_cutadapt_trimming(readfq, outreadfq=trimmed_readfq, cores=cores)
 
             # run_bbduk(readfq, outreadfq=trimmed_readfq)
             outreadfq = output_pattern.format(
@@ -272,6 +276,7 @@ def demultiplex(
                 readfq=trimmed_readfq,
                 tagfile_path=tagfile_path + ".fa",
                 outreadfq=outreadfq,
+                cores=cores
             )
 
             # run_fastq_multx(
