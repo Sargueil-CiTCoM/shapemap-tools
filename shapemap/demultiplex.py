@@ -90,7 +90,8 @@ def run_bbduk(readfq: str, matefq: str = None, outreadfq=None, outmatefq=None):
 def prepare_tagfile(tagfile, groupcolumn, output_path):
     adapter3p = (
         "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
-        # + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" # Flowcell sequence ?
+        # + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" 
+        # Flowcell sequence ?
     )
     tagdf = pd.read_csv(tagfile, sep="\t")
 
@@ -141,10 +142,10 @@ def demultiplex(
         for readfq, matefq in zip(R1, R2):
 
             intermed_readfq = os.path.dirname(
-                readfq.removeprefix(os.path.abspath(folder) + "/")
+                readfq.removeprefix(folder.removesuffix("/") + "/")
             )
             intermed_matefq = os.path.dirname(
-                matefq.removeprefix(os.path.abspath(folder) + "/")
+                matefq.removeprefix(folder.removesuffix("/") + "/")
             )
             print(readfq)
             print(intermed_readfq)
@@ -216,7 +217,7 @@ def demultiplex(
     else:
         for readfq in R1:
             intermed_readfq = os.path.dirname(
-                readfq.removeprefix(os.path.abspath(folder) + "/")
+                readfq.removeprefix(folder.removesuffix("/") + "/")
             )
             os.makedirs(intermed_readfq, exist_ok=True)
             trimmed_readfq = os.path.join(
