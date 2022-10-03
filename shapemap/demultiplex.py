@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger()
 
-output_pattern = "{output_path}/{prefix}_{{name}}.fastq.gz"
+output_pattern = "{output_path}/{prefix}_{{name}}.fastq"
 
 
 # TODO correct path in bbduk
