@@ -50,9 +50,9 @@ def run_cutadapt_demultiplex(
         "cutadapt",
         "-j",
         str(cores),
-        #        "-e",
-        #        "0.15",
-        #        "--no-indels",
+        "-e",
+        "0.3",
+        "--no-indels",
         "-a",
         f"file:{tagfile_path}",
         "-o",
@@ -87,81 +87,10 @@ def run_bbduk(readfq: str, matefq: str = None, outreadfq=None, outmatefq=None):
     sp.run(cmd)
 
 
-def run_trimmomatic(
-    readfq: str,
-    matefq: str = None,
-    outreadfq=None,
-    outreadfq_unpaired=None,
-    outmatefq=None,
-    outmatefq_unpaired=None,
-):
-    if matefq:
-        cmd = [
-            "trimmomatic",
-            "PE",
-            "-phred33",
-            readfq,
-            matefq,
-            outreadfq,
-            outreadfq_unpaired,
-            outmatefq,
-            outmatefq_unpaired,
-            "ILLUMINACLIP:adapters/TruSeq3-PE-2.fa:4:20:10",
-            #            "LEADING:3",
-            #            "TRAILING:3",
-            # "SLIDINGWINDOW:4:15",
-            "MINLEN:36",
-        ]
-    else:
-        cmd = [
-            "trimmomatic",
-            "SE",
-            "-phred33",
-            readfq,
-            outreadfq,
-            outreadfq_unpaired,
-            "ILLUMINACLIP:adapters/TruSeq3-SE.fa:2:30:10",
-            "LEADING:3",
-            "TRAILING:3",
-            "SLIDINGWINDOW:4:15",
-            "MINLEN:36",
-        ]
-
-    sp.run(cmd)
-
-
-#
-
-
-def run_fastq_multx(readfq, outreadfq, tagfile_path, matefq=None, outmatefq=None):
-
-    fastqs = [readfq]
-    if matefq is not None:
-        fastqs.extend([matefq, "-o", outreadfq, "-o", outmatefq])
-    else:
-        fastqs.extend(["-o", outreadfq])
-
-    cmd = [
-        "fastq-multx",
-        "-x",
-        "-e",
-        # "-b",
-        "-m1",
-        "-B",
-        tagfile_path,
-    ] + fastqs
-
-    sp.run(cmd)
-    # try:
-    #    sp.run(cmd)
-    # except Exception:
-    #    pass
-
-
 def prepare_tagfile(tagfile, groupcolumn, output_path):
     adapter3p = (
-        "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC" # NEBNext Adapter
-        #+ "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" # Flowcell sequence ?
+        "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
+        # + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" # Flowcell sequence ?
     )
     tagdf = pd.read_csv(tagfile, sep="\t")
 
@@ -197,8 +126,12 @@ def demultiplex(
     if folder:
         if R1 is not None or R2 is not None:
             raise fire.Error("You cannot mix --folder and --R1/--R2 arguments")
-        R1 = glob.glob(f"{folder}/*R1_[0-9][0-9][0-9].fastq.gz")
-        R2 = glob.glob(f"{folder}/*R2_[0-9][0-9][0-9].fastq.gz")
+        R1 = glob.glob(f"{folder}/**/*R1_[0-9][0-9][0-9].fastq.gz") + glob.glob(
+            f"{folder}/*R1_[0-9][0-9][0-9].fastq.gz"
+        )
+        R2 = glob.glob(f"{folder}/**/*R2_[0-9][0-9][0-9].fastq.gz") + glob.glob(
+            f"{folder}/*R2_[0-9][0-9][0-9].fastq.gz"
+        )
 
     if R2:
         assert len(R1) == len(R2)
@@ -206,12 +139,27 @@ def demultiplex(
     if R2:
         logger.info("Using Pairwise demultiplexing")
         for readfq, matefq in zip(R1, R2):
+
+            intermed_readfq = os.path.dirname(
+                readfq.removeprefix(os.path.abspath(folder) + "/")
+            )
+            intermed_matefq = os.path.dirname(
+                matefq.removeprefix(os.path.abspath(folder) + "/")
+            )
+            print(readfq)
+            print(intermed_readfq)
+            print(intermed_matefq)
+            if intermed_readfq != "" and intermed_readfq != "/":
+                os.makedirs(os.path.join(output_path, intermed_readfq), exist_ok=True)
+            if intermed_matefq != "" and intermed_matefq != "/":
+                os.makedirs(os.path.join(output_path, intermed_matefq), exist_ok=True)
+
             trimmed_readfq = os.path.join(
-                output_path, "trimmed_" + os.path.basename(readfq)
+                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
             )
 
             trimmed_matefq = os.path.join(
-                output_path, "trimmed_" + os.path.basename(matefq)
+                output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
             )
             # trimmed_readfq_unpaired = os.path.join(
             #    output_path, "trimmed_unpaired_" + os.path.basename(readfq)
@@ -241,10 +189,12 @@ def demultiplex(
             # )
 
             outreadfq = output_pattern.format(
-                output_path=output_path, prefix=basename_without_ext(readfq)
+                output_path=os.path.join(output_path, intermed_readfq),
+                prefix=basename_without_ext(readfq),
             )
             outmatefq = output_pattern.format(
-                output_path=output_path, prefix=basename_without_ext(matefq)
+                output_path=os.path.join(output_path, intermed_matefq),
+                prefix=basename_without_ext(matefq),
             )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
 
@@ -265,8 +215,12 @@ def demultiplex(
             # )
     else:
         for readfq in R1:
+            intermed_readfq = os.path.dirname(
+                readfq.removeprefix(os.path.abspath(folder) + "/")
+            )
+            os.makedirs(intermed_readfq, exist_ok=True)
             trimmed_readfq = os.path.join(
-                output_path, "trimmed_" + os.path.basename(readfq)
+                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
             )
             # trimmed_readfq_unpaired = os.path.join(
             #    output_path, "trimmed_unpaired" + os.path.basename(readfq)
@@ -281,7 +235,8 @@ def demultiplex(
 
             # run_bbduk(readfq, outreadfq=trimmed_readfq)
             outreadfq = output_pattern.format(
-                output_path=output_path, prefix=basename_without_ext(readfq)
+                output_path=os.path.join(output_path, matefq),
+                prefix=basename_without_ext(readfq),
             )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
             run_cutadapt_demultiplex(
