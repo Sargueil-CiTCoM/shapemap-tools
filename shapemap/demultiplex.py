@@ -21,11 +21,12 @@ def run_cutadapt_trimming(
     cmd = [
         "cutadapt",
         "-j",
-        cores,
+        str(cores),
         "-a",
         "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
         "-A",
-        "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT",
+        "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
+        # "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT",
         "-o",
         outreadfq,
         "-p",
@@ -38,16 +39,20 @@ def run_cutadapt_trimming(
 
 
 def run_cutadapt_demultiplex(
-    readfq: str, tagfile_path, outreadfq=None, matefq: str = None, outmatefq=None,
-    cores=8
+    readfq: str,
+    tagfile_path,
+    outreadfq=None,
+    matefq: str = None,
+    outmatefq=None,
+    cores=8,
 ):
     cmd = [
         "cutadapt",
         "-j",
-        cores,
-        "-e",
-        "0.15",
-        "--no-indels",
+        str(cores),
+        #        "-e",
+        #        "0.15",
+        #        "--no-indels",
         "-a",
         f"file:{tagfile_path}",
         "-o",
@@ -154,11 +159,15 @@ def run_fastq_multx(readfq, outreadfq, tagfile_path, matefq=None, outmatefq=None
 
 
 def prepare_tagfile(tagfile, groupcolumn, output_path):
+    adapter3p = (
+        "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC" # NEBNext Adapter
+        #+ "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" # Flowcell sequence ?
+    )
     tagdf = pd.read_csv(tagfile, sep="\t")
 
     outtag = pd.DataFrame(tagdf[["name"]])
 
-    outtag["tag"] = tagdf["tag"] + tagdf["primer"]
+    outtag["tag"] = tagdf["tag"] + tagdf["primer"] + adapter3p + "x"
 
     if groupcolumn:
         outtag["group"] = tagdf[groupcolumn]
@@ -180,7 +189,7 @@ def demultiplex(
     R2: [str] = None,
     groupcolumn=None,
     output_path="output",
-    cores=8
+    cores=8,
 ):
     os.makedirs(output_path, exist_ok=True)
     tagfile_path = prepare_tagfile(tagfile, groupcolumn, output_path)
@@ -213,8 +222,11 @@ def demultiplex(
             # )
             logger.info("Trimming end {os.path.basename(readfq)}")
             run_cutadapt_trimming(
-                readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq,
-                cores=cores
+                readfq,
+                matefq,
+                outreadfq=trimmed_readfq,
+                outmatefq=trimmed_matefq,
+                cores=cores,
             )
             # run_bbduk(
             #    readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq
@@ -242,7 +254,7 @@ def demultiplex(
                 tagfile_path=tagfile_path + ".fa",
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
-                cores=cores
+                cores=cores,
             )
             # run_fastq_multx(
             #    readfq=trimmed_readfq,
@@ -276,7 +288,7 @@ def demultiplex(
                 readfq=trimmed_readfq,
                 tagfile_path=tagfile_path + ".fa",
                 outreadfq=outreadfq,
-                cores=cores
+                cores=cores,
             )
 
             # run_fastq_multx(
