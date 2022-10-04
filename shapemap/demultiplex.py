@@ -189,6 +189,9 @@ def demultiplex(
                 outmatefq=outmatefq,
                 cores=cores,
             )
+
+            os.remove(trimmed_readfq)
+            os.remove(trimmed_matefq)
     else:
         for readfq in R1:
             intermed_readfq = os.path.dirname(
@@ -213,6 +216,7 @@ def demultiplex(
                 outreadfq=outreadfq,
                 cores=cores,
             )
+            os.remove(trimmed_readfq)
 
 
 def main():
