@@ -9,8 +9,18 @@ logger = logging.getLogger()
 
 output_pattern = "{output_path}/{prefix}_{{name}}.fastq"
 
+adapter3p = (
+    "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
+    + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG"  # Flowcell sequence ?
+)
 
-# TODO correct path in bbduk
+nebnext_adapters = [
+    "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
+    "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
+    # "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT",
+]
+
+
 def basename_without_ext(path):
     return os.path.splitext(os.path.basename(path))[0]
 
@@ -23,10 +33,9 @@ def run_cutadapt_trimming(
         "-j",
         str(cores),
         "-a",
-        "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
+        nebnext_adapters[0],
         "-A",
-        "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
-        # "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT",
+        nebnext_adapters[1],
         "-o",
         outreadfq,
         "-p",
@@ -51,7 +60,7 @@ def run_cutadapt_demultiplex(
         "-j",
         str(cores),
         "-e",
-        "0.3",
+        "2",
         "--no-indels",
         "-a",
         f"file:{tagfile_path}",
@@ -88,16 +97,11 @@ def run_bbduk(readfq: str, matefq: str = None, outreadfq=None, outmatefq=None):
 
 
 def prepare_tagfile(tagfile, groupcolumn, output_path):
-    adapter3p = (
-        "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
-        # + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG" 
-        # Flowcell sequence ?
-    )
     tagdf = pd.read_csv(tagfile, sep="\t")
 
     outtag = pd.DataFrame(tagdf[["name"]])
 
-    outtag["tag"] = tagdf["tag"] + tagdf["primer"] + adapter3p + "x"
+    outtag["tag"] = tagdf["tag"] + tagdf["primer"].str.slice(0, 4)
 
     if groupcolumn:
         outtag["group"] = tagdf[groupcolumn]
@@ -140,16 +144,12 @@ def demultiplex(
     if R2:
         logger.info("Using Pairwise demultiplexing")
         for readfq, matefq in zip(R1, R2):
-
             intermed_readfq = os.path.dirname(
                 readfq.removeprefix(folder.removesuffix("/") + "/")
             )
             intermed_matefq = os.path.dirname(
                 matefq.removeprefix(folder.removesuffix("/") + "/")
             )
-            print(readfq)
-            print(intermed_readfq)
-            print(intermed_matefq)
             if intermed_readfq != "" and intermed_readfq != "/":
                 os.makedirs(os.path.join(output_path, intermed_readfq), exist_ok=True)
             if intermed_matefq != "" and intermed_matefq != "/":
@@ -162,33 +162,6 @@ def demultiplex(
             trimmed_matefq = os.path.join(
                 output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
             )
-            # trimmed_readfq_unpaired = os.path.join(
-            #    output_path, "trimmed_unpaired_" + os.path.basename(readfq)
-            # )
-
-            # trimmed_matefq_unpaired = os.path.join(
-            #    output_path, "trimmed_unpaired_" + os.path.basename(matefq)
-            # )
-            logger.info("Trimming end {os.path.basename(readfq)}")
-            run_cutadapt_trimming(
-                readfq,
-                matefq,
-                outreadfq=trimmed_readfq,
-                outmatefq=trimmed_matefq,
-                cores=cores,
-            )
-            # run_bbduk(
-            #    readfq, matefq, outreadfq=trimmed_readfq, outmatefq=trimmed_matefq
-            # )
-            # run_trimmomatic(
-            #    readfq,
-            #    matefq,
-            #    outreadfq=trimmed_readfq,
-            #    outreadfq_unpaired=trimmed_readfq_unpaired,
-            #    outmatefq=trimmed_matefq,
-            #    outmatefq_unpaired=trimmed_matefq_unpaired,
-            # )
-
             outreadfq = output_pattern.format(
                 output_path=os.path.join(output_path, intermed_readfq),
                 prefix=basename_without_ext(readfq),
@@ -196,6 +169,15 @@ def demultiplex(
             outmatefq = output_pattern.format(
                 output_path=os.path.join(output_path, intermed_matefq),
                 prefix=basename_without_ext(matefq),
+            )
+
+            logger.info("Trimming end {os.path.basename(readfq)}")
+            run_cutadapt_trimming(
+                readfq,
+                matefq,
+                outreadfq=trimmed_readfq,
+                outmatefq=trimmed_matefq,
+                cores=cores,
             )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
 
@@ -207,34 +189,19 @@ def demultiplex(
                 outmatefq=outmatefq,
                 cores=cores,
             )
-            # run_fastq_multx(
-            #    readfq=trimmed_readfq,
-            #    matefq=trimmed_matefq,
-            #    tagfile_path=tagfile_path,
-            #    outreadfq=outreadfq,
-            #    outmatefq=outmatefq,
-            # )
     else:
         for readfq in R1:
             intermed_readfq = os.path.dirname(
                 readfq.removeprefix(folder.removesuffix("/") + "/")
             )
-            os.makedirs(intermed_readfq, exist_ok=True)
+            if intermed_readfq != "" and intermed_readfq != "/":
+                os.makedirs(os.path.join(output_path, intermed_readfq), exist_ok=True)
             trimmed_readfq = os.path.join(
                 output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
             )
-            # trimmed_readfq_unpaired = os.path.join(
-            #    output_path, "trimmed_unpaired" + os.path.basename(readfq)
-            # )
             logger.info("Trimming end {os.path.basename(readfq)}")
-            # run_trimmomatic(
-            #    readfq,
-            #    outreadfq=trimmed_readfq,
-            #    outreadfq_unpaired=trimmed_readfq_unpaired,
-            # )
             run_cutadapt_trimming(readfq, outreadfq=trimmed_readfq, cores=cores)
 
-            # run_bbduk(readfq, outreadfq=trimmed_readfq)
             outreadfq = output_pattern.format(
                 output_path=os.path.join(output_path, matefq),
                 prefix=basename_without_ext(readfq),
@@ -246,10 +213,6 @@ def demultiplex(
                 outreadfq=outreadfq,
                 cores=cores,
             )
-
-            # run_fastq_multx(
-            #    readfq=trimmed_readfq, tagfile_path=tagfile_path, outreadfq=outreadfq
-            # )
 
 
 def main():
