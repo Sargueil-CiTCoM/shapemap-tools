@@ -1,0 +1,13 @@
+data_folders:
+  -
+  -
+  -
+
+sequences:
+  samap: 
+
+shapemapper_output: "2022-08-12-aptamer-ribo_Rep3_5000depth"
+
+title_template: "SAMAP{sam}SAM_{magnesium}Mg_T{temperature}C_{replicate}"
+
+split_seq: True

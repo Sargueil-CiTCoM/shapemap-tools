@@ -22,7 +22,7 @@ nebnext_adapters = [
 
 
 def basename_without_ext(path):
-    return os.path.splitext(os.path.basename(path))[0]
+    return (os.path.basename(path).split(os.extsep))[0]
 
 
 def run_cutadapt_trimming(
