@@ -4,7 +4,7 @@ import pandas as pd
 import ruamel.yaml as yaml
 import glob
 import copy
-import fasta
+from . import fasta
 import os
 
 YAML = yaml.YAML()
@@ -69,7 +69,7 @@ def run_shapemapper(
 
 
 def gen_splitted_ref(ref_path, output_path) -> dict:
-    os.makedirs(output_path, exists_ok=True)
+    os.makedirs(output_path, exist_ok=True)
 
     splitted = {}
     ref_path_prefix = os.path.basename(ref_path).split(os.extsep)[0]
@@ -105,8 +105,8 @@ def launch_shapemapper(config_path, samples_path):
         "modified": {"R1": [], "R2": []},
         "untreated": {"R1": [], "R2": []},
         "denatured": {"R1": [], "R2": []},
-    }
-
+        }
+    os.makedirs(config["shapemapper_output"], exist_ok=True)
     for rid, sample in samples.rows():
         if config["split_seq"]:
             splitted_refs = gen_splitted_ref(
