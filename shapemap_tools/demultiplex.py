@@ -70,6 +70,8 @@ def run_cutadapt_demultiplex(
         outmatefq,
         readfq,
         matefq,
+	"--action",
+	"none"
     ]
 
     sp.run(cmd)
@@ -101,7 +103,7 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
 
     outtag = pd.DataFrame(tagdf[["name"]])
 
-    outtag["tag"] = tagdf["tag"] + tagdf["primer"].str.slice(0, 4)
+    outtag["tag"] = tagdf["tag"] + tagdf["primer"].str.slice(0, 7)
 
     if groupcolumn:
         outtag["group"] = tagdf[groupcolumn]
@@ -155,13 +157,13 @@ def demultiplex(
             if intermed_matefq != "" and intermed_matefq != "/":
                 os.makedirs(os.path.join(output_path, intermed_matefq), exist_ok=True)
 
-            trimmed_readfq = os.path.join(
-                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
-            )
-
-            trimmed_matefq = os.path.join(
-                output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
-            )
+	#            trimmed_readfq = os.path.join(
+	#                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
+	#            )
+	#
+	#            trimmed_matefq = os.path.join(
+	#                output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
+	#            )
             outreadfq = output_pattern.format(
                 output_path=os.path.join(output_path, intermed_readfq),
                 prefix=basename_without_ext(readfq),
@@ -171,27 +173,27 @@ def demultiplex(
                 prefix=basename_without_ext(matefq),
             )
 
-            logger.info("Trimming end {os.path.basename(readfq)}")
-            run_cutadapt_trimming(
-                readfq,
-                matefq,
-                outreadfq=trimmed_readfq,
-                outmatefq=trimmed_matefq,
-                cores=cores,
-            )
+           # logger.info("Trimming end {os.path.basename(readfq)}")
+           # run_cutadapt_trimming(
+           #     readfq,
+           #     matefq,
+           #     outreadfq=trimmed_readfq,
+           #     outmatefq=trimmed_matefq,
+           #     cores=cores,
+           # )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
 
             run_cutadapt_demultiplex(
-                readfq=trimmed_readfq,
-                matefq=trimmed_matefq,
+                readfq=readfq,
+                matefq=matefq,
                 tagfile_path=tagfile_path + ".fa",
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
                 cores=cores,
             )
 
-            os.remove(trimmed_readfq)
-            os.remove(trimmed_matefq)
+           # os.remove(trimmed_readfq)
+           # os.remove(trimmed_matefq)
     else:
         for readfq in R1:
             intermed_readfq = os.path.dirname(

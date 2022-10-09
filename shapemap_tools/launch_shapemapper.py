@@ -7,6 +7,8 @@ import copy
 from . import fasta
 import os
 
+shapemapper_path = "/data/fxlyonnet/shapemapper-2.1.5/shapemapper"
+
 YAML = yaml.YAML()
 
 fastq_input_pattern = "{input_path}/{cond}/*{read}*.fastq*"
@@ -17,12 +19,7 @@ def run_shapemapper(
     reference: str,
     output_dir: str,
     name: str,
-    modified_r1: [str],
-    modified_r2: [str],
-    untreated_r1: [str],
-    untreated_r2: [str],
-    denatured_r1: [str],
-    denatured_r2: [str],
+    input_fastqs,
     cores: int = 8,
     indiv_norm: bool = True,
     min_depth: int = 5000,
@@ -31,9 +28,9 @@ def run_shapemapper(
     extra_args: [str] = [],
 ):
     cmd = [
-        "shapemapper",
+        shapemapper_path,
         "--name",
-        "name",
+        name,
         "--nproc",
         str(cores),
         "--min-depth",
@@ -44,27 +41,19 @@ def run_shapemapper(
         output_dir,
         "--log",
         log,
-        "--modified",
-        "--R1",
-        " ".join(modified_r1),
-        "--R2",
-        " ".join(modified_r2),
-        "--untreated",
-        "--R1",
-        " ".join(untreated_r1),
-        "--R2",
-        " ".join(untreated_r2),
-        "--denatured",
-        "--R1",
-        " ".join(denatured_r1),
-        "--R2",
-        " ".join(denatured_r2),
     ]
     if indiv_norm:
         cmd.append("--indiv-norm")
     if overwrite:
         cmd.append("--overwrite")
 
+    for condtype in input_fastqs.keys():
+        cmd.append(f"--{condtype}")
+        for readtype, fastqs in input_fastqs[condtype].items():
+            cmd.append(f"--{readtype}")
+            cmd.extend(fastqs)
+
+    print(" ".join(cmd))
     sp.run(cmd)
 
 
@@ -100,17 +89,19 @@ def gen_splitted_ref(ref_path, output_path) -> dict:
 #    extra_args: [str] = [],
 def launch_shapemapper(config_path, samples_path):
     samples = pd.read_csv(samples_path, sep="\t")
-    config = YAML.load(config_path)
+    with open(config_path, "r") as config_file:
+        config = YAML.load(config_file)
+    print(config)
     afastq = {
         "modified": {"R1": [], "R2": []},
         "untreated": {"R1": [], "R2": []},
         "denatured": {"R1": [], "R2": []},
-        }
+    }
     os.makedirs(config["shapemapper_output"], exist_ok=True)
-    for rid, sample in samples.rows():
+    for rid, sample in samples.iterrows():
         if config["split_seq"]:
             splitted_refs = gen_splitted_ref(
-                sample["sequence"],
+                config["sequences"][sample["sequence"]],
                 os.path.join(config["shapemapper_output"], "sequences"),
             )
             for seq in splitted_refs.keys():
@@ -118,26 +109,26 @@ def launch_shapemapper(config_path, samples_path):
                 for condtype in fastqs.keys():
                     for readtype in fastqs[condtype].keys():
                         for folder in config["data_folders"]:
-                            fqs = glob.glob(
-                                fastq_input_splitted_pattern.format(
-                                    sequence=seq,
-                                    input_path=folder,
-                                    cond=sample[condtype],
-                                    read=readtype,
-                                )
+                            cur_glob_path = fastq_input_splitted_pattern.format(
+                                sequence=seq,
+                                input_path=folder,
+                                cond=sample[condtype],
+                                read=readtype,
                             )
+                            # print(f"PATH: {cur_glob_path}")
+                            fqs = glob.glob(cur_glob_path)
                             fastqs[condtype][readtype].extend(fqs)
+                title = config["title_template"].format(**dict(sample))
                 run_shapemapper(
-                    reference=splitted_refs[sample["sequence"]],
-                    output_dir=config["shapemapper_output"],
-                    name=config["title_template"].format(**dict(sample))
-                    + f"_{sample['sequence']}",
-                    modified_r1=fastqs["modified"]["R1"],
-                    modified_r2=fastqs["modified"]["R2"],
-                    untreated_r1=fastqs["untreated"]["R1"],
-                    untreated_r2=fastqs["untreated"]["R2"],
-                    denatured_r1=fastqs["denatured"]["R1"],
-                    denatured_r2=fastqs["denatured"]["R2"],
+                    reference=splitted_refs[seq],
+                    output_dir=os.path.join(config["shapemapper_output"], title),
+                    name=title,
+                    log=os.path.join(
+                        config["shapemapper_output"],
+                        title,
+                        title + f"_{seq}.log",
+                    ),
+                    input_fastqs=fastqs,
                 )
 
 
