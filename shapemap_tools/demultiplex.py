@@ -46,6 +46,38 @@ def run_cutadapt_trimming(
 
     sp.run(cmd)
 
+print("LOLO")
+
+def run_cutadapt_demultiplex_with_mate(
+    readfq: str,
+    tagfile_path,
+    tagfile_mate_path,
+    outreadfq=None,
+    matefq: str = None,
+    outmatefq=None,
+    cores=8,
+):
+    cmd = [
+        "cutadapt",
+        "-j",
+        str(cores),
+        "-e",
+        "2",
+        "--no-indels",
+        "-a",
+        f"file:{tagfile_path}",
+        "-B",
+        f"file:{tagfile_mate_path}",
+        "-o",
+        outreadfq,
+        "-p",
+        outmatefq,
+        readfq,
+        matefq,
+    ]
+
+    sp.run(cmd)
+
 
 def run_cutadapt_demultiplex(
     readfq: str,
@@ -98,6 +130,16 @@ def run_bbduk(readfq: str, matefq: str = None, outreadfq=None, outmatefq=None):
     sp.run(cmd)
 
 
+pairs = {"A": "T", "T": "A", "G": "C", "C": "G", "N": "N"}
+
+
+def rev_complement(seq):
+    rc = ""
+    for nuc in seq:
+        rc = pairs[nuc] + rc
+    return rc
+
+
 def prepare_tagfile(tagfile, groupcolumn, output_path):
     tagdf = pd.read_csv(tagfile, sep="\t")
 
@@ -111,9 +153,12 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
     tagfile_path = os.path.join(output_path, "tags.tsv")
     outtag.to_csv(tagfile_path, sep="\t", index=False, header=False)
 
-    with open(os.path.join(output_path, "tags.fa"), "w") as fd:
+    with open(os.path.join(output_path, "tags.fa"), "w") as fd, open(
+        os.path.join(output_path, "tags_mate.fa"), "w"
+    ) as fdm:
         for rid, row in outtag.iterrows():
             fd.write(f">{row['name']}\n{row['tag']}\n")
+            fdm.write(f">{row['name']}\n{rev_complement(row['tag'])}\n")
 
     return tagfile_path[:-4]
 
@@ -183,10 +228,11 @@ def demultiplex(
            # )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
 
-            run_cutadapt_demultiplex(
+            run_cutadapt_demultiplex_with_mate(
                 readfq=readfq,
                 matefq=matefq,
                 tagfile_path=tagfile_path + ".fa",
+                tagfile_mate_path=tagfile_path + "_mate.fa",
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
                 cores=cores,
