@@ -46,7 +46,9 @@ def run_cutadapt_trimming(
 
     sp.run(cmd)
 
+
 print("LOLO")
+
 
 def run_cutadapt_demultiplex_with_mate(
     readfq: str,
@@ -69,11 +71,13 @@ def run_cutadapt_demultiplex_with_mate(
         "-g",
         f"file:{tagfile_mate_path}",
         "-o",
-        outreadfq,
-        "-p",
         outmatefq,
-        readfq,
+        "-p",
+        outreadfq,
         matefq,
+        readfq,
+        "--action",
+        "none",
     ]
 
     sp.run(cmd)
@@ -102,8 +106,8 @@ def run_cutadapt_demultiplex(
         outmatefq,
         readfq,
         matefq,
-	"--action",
-	"none"
+        "--action",
+        "none",
     ]
 
     sp.run(cmd)
@@ -145,7 +149,7 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
 
     outtag = pd.DataFrame(tagdf[["name"]])
 
-    outtag["tag"] = tagdf["tag"]# + tagdf["primer"]#.str.slice(0, 4)
+    outtag["tag"] = tagdf["tag"]  # + tagdf["primer"]#.str.slice(0, 4)
     outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"]).apply(rev_complement)
     outtag["primer"] = tagdf["primer"]
     outtag["revprimer"] = tagdf["primer"].apply(rev_complement)
@@ -154,9 +158,11 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
         outtag["group"] = tagdf[groupcolumn]
 
     tagfile_path = os.path.join(output_path, "tags.tsv")
-    outtag.to_csv(tagfile_path, sep="\t")#, index=False, header=False)
+    outtag.to_csv(tagfile_path, sep="\t")  # , index=False, header=False)
 
-    with open(os.path.join(output_path, "tags.fa"), "w") as fd, open(os.path.join(output_path, "tags_mate.fa"), "w") as fdm:
+    with open(os.path.join(output_path, "tags.fa"), "w") as fd, open(
+        os.path.join(output_path, "tags_mate.fa"), "w"
+    ) as fdm:
         for rid, row in outtag.iterrows():
             fd.write(f">{row['name']}\n{row['tag']}\n")
             fdm.write(f">{row['name']}\n{row['mate_tag']}\n")
@@ -203,13 +209,13 @@ def demultiplex(
             if intermed_matefq != "" and intermed_matefq != "/":
                 os.makedirs(os.path.join(output_path, intermed_matefq), exist_ok=True)
 
-	#            trimmed_readfq = os.path.join(
-	#                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
-	#            )
-	#
-	#            trimmed_matefq = os.path.join(
-	#                output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
-	#            )
+            #            trimmed_readfq = os.path.join(
+            #                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
+            #            )
+            #
+            #            trimmed_matefq = os.path.join(
+            #                output_path, intermed_matefq, "trimmed_" + os.path.basename(matefq)
+            #            )
             outreadfq = output_pattern.format(
                 output_path=os.path.join(output_path, intermed_readfq),
                 prefix=basename_without_ext(readfq),
@@ -219,14 +225,14 @@ def demultiplex(
                 prefix=basename_without_ext(matefq),
             )
 
-           # logger.info("Trimming end {os.path.basename(readfq)}")
-           # run_cutadapt_trimming(
-           #     readfq,
-           #     matefq,
-           #     outreadfq=trimmed_readfq,
-           #     outmatefq=trimmed_matefq,
-           #     cores=cores,
-           # )
+            # logger.info("Trimming end {os.path.basename(readfq)}")
+            # run_cutadapt_trimming(
+            #     readfq,
+            #     matefq,
+            #     outreadfq=trimmed_readfq,
+            #     outmatefq=trimmed_matefq,
+            #     cores=cores,
+            # )
             logger.info("Demultiplexing {os.path.basename(readfq)}")
 
             run_cutadapt_demultiplex_with_mate(
@@ -239,8 +245,8 @@ def demultiplex(
                 cores=cores,
             )
 
-           # os.remove(trimmed_readfq)
-           # os.remove(trimmed_matefq)
+        # os.remove(trimmed_readfq)
+        # os.remove(trimmed_matefq)
     else:
         for readfq in R1:
             intermed_readfq = os.path.dirname(
