@@ -146,7 +146,7 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
     outtag = pd.DataFrame(tagdf[["name"]])
 
     outtag["tag"] = tagdf["tag"]# + tagdf["primer"]#.str.slice(0, 4)
-    outtag["mate_tag"] = rev_complement(tagdf["tag"] + tagdf["primer"]) #.str.slice(0, 7)
+    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"]).apply(rev_complement, axis=1) #.str.slice(0, 7)
 
     if groupcolumn:
         outtag["group"] = tagdf[groupcolumn]
