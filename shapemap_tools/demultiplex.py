@@ -144,24 +144,20 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
     tagdf = pd.read_csv(tagfile, sep="\t")
 
     outtag = pd.DataFrame(tagdf[["name"]])
-    outtag_mate = pd.DataFrame(tagdf[["name"]])
 
-    outtag["tag"] = tagdf["tag"] + tagdf["primer"]#.str.slice(0, 4)
-    outtag_mate["tag"] = tagdf["tag"] + tagdf["primer"] #.str.slice(0, 7)
+    outtag["tag"] = tagdf["tag"]# + tagdf["primer"]#.str.slice(0, 4)
+    outtag["mate_tag"] = rev_complement(tagdf["tag"] + tagdf["primer"]) #.str.slice(0, 7)
 
     if groupcolumn:
         outtag["group"] = tagdf[groupcolumn]
 
     tagfile_path = os.path.join(output_path, "tags.tsv")
-    outtag.to_csv(tagfile_path, sep="\t", index=False, header=False)
+    outtag.to_csv(tagfile_path, sep="\t")#, index=False, header=False)
 
-    with open(os.path.join(output_path, "tags.fa"), "w") as fd:
+    with open(os.path.join(output_path, "tags.fa"), "w") as fd, open(os.path.join(output_path, "tags_mate.fa"), "w") as fdm:
         for rid, row in outtag.iterrows():
             fd.write(f">{row['name']}\n{row['tag']}\n")
-
-    with open(os.path.join(output_path, "tags_mate.fa"), "w") as fdm:
-        for rid, row in outtag_mate.iterrows():
-            fdm.write(f">{row['name']}\n^{rev_complement(row['tag'])}\n")
+            fdm.write(f">{row['name']}\n{row['mate_tag']}\n")
 
     return tagfile_path[:-4]
 
