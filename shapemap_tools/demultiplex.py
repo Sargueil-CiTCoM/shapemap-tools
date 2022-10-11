@@ -69,11 +69,11 @@ def run_cutadapt_demultiplex_with_mate(
         "-g",
         f"file:{tagfile_mate_path}",
         "-o",
-        outmatefq,
-        "-p",
         outreadfq,
-        matefq,
+        "-p",
+        outmatefq,
         readfq,
+        matefq,
     ]
 
     sp.run(cmd)
@@ -146,7 +146,7 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
     outtag = pd.DataFrame(tagdf[["name"]])
 
     outtag["tag"] = tagdf["tag"]# + tagdf["primer"]#.str.slice(0, 4)
-    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"].str.slice(0, 7)).apply(rev_complement)
+    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"]).apply(rev_complement)
     outtag["primer"] = tagdf["primer"]
     outtag["revprimer"] = tagdf["primer"].apply(rev_complement)
 
