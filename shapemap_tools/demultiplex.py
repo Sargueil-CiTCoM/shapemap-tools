@@ -65,6 +65,9 @@ def run_cutadapt_demultiplex_with_mate(
         "cutadapt",
         "-j",
         str(cores),
+        "-e",
+        "1",
+        "--no-indels",
         "-g",
         f"file:{tagfile_mate_path}",
         "-o",
@@ -161,8 +164,8 @@ def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=1, indels="noi
         os.path.join(output_path, "tags_mate.fa"), "w"
     ) as fdm:
         for rid, row in outtag.iterrows():
-            fd.write(f">{row['name']}\n{row['tag']};max_errors={max_errors};{indels}\n")
-            fdm.write(f">{row['name']}\n{row['mate_tag']};max_errors={max_errors};{indels}\n")
+            fd.write(f">{row['name']}\n{row['tag']};e={max_errors};{indels}\n")
+            fdm.write(f">{row['name']}\n{row['mate_tag']};e={max_errors};{indels}\n")
 
     return tagfile_path[:-4]
 
