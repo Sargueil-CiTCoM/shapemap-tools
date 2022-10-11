@@ -57,6 +57,8 @@ def run_cutadapt_demultiplex_with_mate(
     outmatefq=None,
     cores=8,
 ):
+    # Here R1 and  R2 are inverted so the R2 5' primer (which is the 3' primer on the
+    # main strand) is used for selecting pairs.
     cmd = [
         "cutadapt",
         "-j",
@@ -64,16 +66,14 @@ def run_cutadapt_demultiplex_with_mate(
         "-e",
         "2",
         "--no-indels",
-        "-a",
-        f"file:{tagfile_path}",
-        "-G",
+        "-g",
         f"file:{tagfile_mate_path}",
         "-o",
-        outreadfq,
-        "-p",
         outmatefq,
-        readfq,
+        "-p",
+        outreadfq,
         matefq,
+        readfq,
     ]
 
     sp.run(cmd)
