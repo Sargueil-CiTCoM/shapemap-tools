@@ -64,7 +64,7 @@ def run_cutadapt_demultiplex_with_mate(
         "-j",
         str(cores),
         "-e",
-        "2",
+        "0",
         "--no-indels",
         "-g",
         f"file:{tagfile_mate_path}",
@@ -146,7 +146,7 @@ def prepare_tagfile(tagfile, groupcolumn, output_path):
     outtag = pd.DataFrame(tagdf[["name"]])
 
     outtag["tag"] = tagdf["tag"]# + tagdf["primer"]#.str.slice(0, 4)
-    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"]).apply(rev_complement) #.str.slice(0, 7)
+    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"].str.slice(0, 7)).apply(rev_complement)
     outtag["primer"] = tagdf["primer"]
     outtag["revprimer"] = tagdf["primer"].apply(rev_complement)
 
