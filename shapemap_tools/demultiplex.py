@@ -65,8 +65,10 @@ def run_cutadapt_demultiplex_with_mate(
         "cutadapt",
         "-j",
         str(cores),
+        "--action",
+        "none",
         "-e",
-        "1",
+        "2",
         "--no-indels",
         "-g",
         f"file:{tagfile_mate_path}",
@@ -76,8 +78,6 @@ def run_cutadapt_demultiplex_with_mate(
         outreadfq,
         matefq,
         readfq,
-        "--action",
-        "none",
     ]
 
     sp.run(cmd)
@@ -96,7 +96,7 @@ def run_cutadapt_demultiplex(
         "-j",
         str(cores),
         "-e",
-        "2",
+        "0",
         "--no-indels",
         "-a",
         f"file:{tagfile_path}",
@@ -144,13 +144,13 @@ def rev_complement(seq):
     return rc
 
 
-def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=1, indels="noindels"):
+def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=2, indels="noindels"):
     tagdf = pd.read_csv(tagfile, sep="\t")
 
     outtag = pd.DataFrame(tagdf[["name"]])
 
     outtag["tag"] = tagdf["tag"]  # + tagdf["primer"]#.str.slice(0, 4)
-    outtag["mate_tag"] = (tagdf["tag"] + tagdf["primer"]).apply(rev_complement)
+    outtag["mate_tag"] = (tagdf["tag"]).apply(rev_complement) # GCTGGTGTTGCCGTCGA
     outtag["primer"] = tagdf["primer"]
     outtag["revprimer"] = tagdf["primer"].apply(rev_complement)
 
@@ -164,8 +164,8 @@ def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=1, indels="noi
         os.path.join(output_path, "tags_mate.fa"), "w"
     ) as fdm:
         for rid, row in outtag.iterrows():
-            fd.write(f">{row['name']}\n{row['tag']};e={max_errors};{indels}\n")
-            fdm.write(f">{row['name']}\n{row['mate_tag']};e={max_errors};{indels}\n")
+            fd.write(f">{row['name']}\n{row['tag']};#e={max_errors};{indels};min_overlap={len(row['tag'])}\n")
+            fdm.write(f">{row['name']}\n{row['mate_tag']};e={max_errors};{indels};min_overlap={len(row['mate_tag'])}\n")
 
     return tagfile_path[:-4]
 
