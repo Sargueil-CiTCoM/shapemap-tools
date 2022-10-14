@@ -8,30 +8,40 @@ import os
 import fire
 import subprocess as sp
 import glob
-import utils
+from . import utils
 
 # import multiprocessing as mp
 
 
-shapemapper_path = "../shapemapper2/internals/bin/"
-norm_script_path = os.path.join(shapemapper_path, "normalize_profiles.py")
-tab_to_shape_path = os.path.join(shapemapper_path, "tab_to_shape.py")
-render_figures_path = os.path.join(shapemapper_path, "render_figures.py")
+shapemapper_bin_path = "{shapemapper_path}/internals/bin/"
+norm_script_path = "{shapemapper_bin_path}/normalize_profiles.py"
+tab_to_shape_path = "{shapemapper_bin_path}/tab_to_shape.py"
+render_figures_path = "{shapemapper_bin_path}/render_figures.py"
 
 
 def runNormalizeShapemapper(tonorm, normout):
-    cmd = ["python", norm_script_path, "--tonorm"] + tonorm + ["--normout"] + normout
+    cmd = (
+        [
+            "python",
+            norm_script_path.format(shapemapper_bin_path=shapemapper_bin_path),
+            "--tonorm",
+        ]
+        + tonorm
+        + ["--normout"]
+        + normout
+    )
     # [print(arg,end=" ") for arg in cmd]
     try:
         sp.run(cmd)
-    except Exception:
+    except Exception as e:
+        raise e
         pass
 
 
 def runTabToShape(profile_file, map_file, shape_file):
     cmd = [
         "python",
-        tab_to_shape_path,
+        tab_to_shape_path.format(shapemapper_bin_path=shapemapper_bin_path),
         "--infile",
         profile_file,
         "--map",
@@ -41,7 +51,8 @@ def runTabToShape(profile_file, map_file, shape_file):
     ]
     try:
         sp.run(cmd)
-    except Exception:
+    except Exception as e:
+        raise e
         pass
 
 
@@ -50,7 +61,7 @@ def runRenderFigures(
 ):
     cmd = [
         "python",
-        render_figures_path,
+        render_figures_path.format(shapemapper_bin_path=shapemapper_bin_path),
         "--infile",
         profile_file,
         "--mindepth",
@@ -64,7 +75,8 @@ def runRenderFigures(
     ]
     try:
         sp.run(cmd)
-    except Exception:
+    except Exception as e:
+        raise e
         pass
 
 
@@ -166,8 +178,12 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
         )
 
 
-def main(globpath, outputpath, mode="conditions"):
+def main(globpath, outputpath, mode="conditions", shapemapper_path="shapemapper2"):
 
+    global shapemapper_bin_path
+    shapemapper_bin_path = shapemapper_bin_path.format(
+        shapemapper_path=shapemapper_path
+    )
     os.makedirs(outputpath, exist_ok=True)
     conditions = [os.path.basename(path) for path in glob.glob(f"{globpath}/*")]
 
@@ -195,8 +211,9 @@ def main(globpath, outputpath, mode="conditions"):
 #    #pool.close()
 #    #pool.join()
 #
-def main():
+def main_wrapper():
     fire.Fire(main)
 
+
 if __name__ == "__main__":
-    main()
+    main_wrapper()
