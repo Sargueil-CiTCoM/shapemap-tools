@@ -115,8 +115,15 @@ def launch_shapemapper(config_path, samples_path):
                                 cond=sample[condtype],
                                 read=readtype,
                             )
+                            cur_glob_path_rev = fastq_input_splitted_pattern.format(
+                                sequence=seq + "_rev",
+                                input_path=folder,
+                                cond=sample[condtype],
+                                read=readtype,
+                            )
+                            
                             # print(f"PATH: {cur_glob_path}")
-                            fqs = glob.glob(cur_glob_path)
+                            fqs = glob.glob(cur_glob_path) + glob.glob(cur_glob_path_rev)
                             fastqs[condtype][readtype].extend(fqs)
                 title = config["title_template"].format(**dict(sample))
                 run_shapemapper(
