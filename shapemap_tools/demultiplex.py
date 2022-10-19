@@ -21,6 +21,8 @@ def run_cutadapt_demultiplex_pairend(
     matefq: str = None,
     outmatefq=None,
     cores=8,
+    max_errors=0,
+    indels=False,
 ):
     # Here R1 and  R2 are inverted so the R2 5' primer (which is the 3' primer on the
     # main strand) is used for selecting pairs.
@@ -31,8 +33,8 @@ def run_cutadapt_demultiplex_pairend(
         "--action",
         "none",
         "-e",
-        "0",
-        "--no-indels",
+        str(max_errors),
+        "--no-indels" if not indels else "--indels",
         "-g",
         f"file:{tagfile_path}",
         "-o",
@@ -56,7 +58,8 @@ def rev_complement(seq):
     return rc
 
 
-def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=2, indels="noindels"):
+def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=0, indels=False):
+    indels = "indels" if indels else "noindels"
     tagdf = pd.read_csv(tagfile, sep="\t")
 
     outtag = pd.DataFrame(tagdf[["name"]])
@@ -124,9 +127,17 @@ def demultiplex(
     groupcolumn=None,
     output_path="output",
     cores=8,
+    max_errors=1,
+    indels=False,
 ):
     os.makedirs(output_path, exist_ok=True)
-    tagfile_path = prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=0)
+    tagfile_path = prepare_tagfile(
+        tagfile,
+        groupcolumn,
+        output_path,
+        max_errors=max_errors,
+        indels=indels,
+    )
 
     if folder:
         if R1 is not None or R2 is not None:
@@ -157,6 +168,8 @@ def demultiplex(
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
                 cores=cores,
+                indels=indels,
+                max_errors=max_errors,
             )
             unmapped_readfq = outreadfq.format(name="unknown")
             unmapped_matefq = outmatefq.format(name="unknown")
@@ -170,6 +183,8 @@ def demultiplex(
                 outreadfq=outmatefq_rev,
                 outmatefq=outreadfq_rev,
                 cores=cores,
+                indels=indels,
+                max_errors=max_errors,
             )
 
         # os.remove(trimmed_readfq)
