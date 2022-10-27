@@ -21,7 +21,7 @@ def run_cutadapt_demultiplex_pairend(
     matefq: str = None,
     outmatefq=None,
     cores=8,
-    max_errors=0,
+    errors=0,
     indels=False,
 ):
     # Here R1 and  R2 are inverted so the R2 5' primer (which is the 3' primer on the
@@ -33,7 +33,7 @@ def run_cutadapt_demultiplex_pairend(
         "--action",
         "none",
         "-e",
-        str(max_errors),
+        str(errors),
         "--no-indels" if not indels else "--indels",
         "-g",
         f"file:{tagfile_path}",
@@ -58,7 +58,7 @@ def rev_complement(seq):
     return rc
 
 
-def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=0, indels=False):
+def prepare_tagfile(tagfile, groupcolumn, output_path, errors=0, indels=False):
     indels = "indels" if indels else "noindels"
     tagdf = pd.read_csv(tagfile, sep="\t")
 
@@ -81,22 +81,24 @@ def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=0, indels=Fals
         for rid, row in outtag.iterrows():
             fd.write(
                 f">{row['name']}\n{row['tag']}"
-                f";e={max_errors};{indels};min_overlap={len(row['tag'])};rightmost\n"
+                f";e={errors};{indels};min_overlap={len(row['tag'])};rightmost\n"
             )
             fdm.write(
                 f">{row['name']}\n{row['mate_tag']}"
-                f";e={max_errors};{indels};min_overlap={len(row['mate_tag'])};rightmost\n"
+                f";e={errors};{indels};min_overlap={len(row['mate_tag'])};rightmost\n"
             )
 
     return tagfile_path[:-4]
 
 
 def get_fastq_files(folder):
-    R1 = glob.glob(f"{folder}/**/*R1_[0-9][0-9][0-9].fastq.gz") + glob.glob(
-        f"{folder}/*R1_[0-9][0-9][0-9].fastq.gz"
+    pattern_dir = f"{folder}/**/*{{strand}}_[0-9][0-9][0-9].fastq.gz"
+    pattern_subdir = f"{folder}/*{{strand}}_[0-9][0-9][0-9].fastq.gz"
+    R1 = glob.glob(pattern_dir.format(strand="R1")) + glob.glob(
+        pattern_subdir.format(strand="R1")
     )
-    R2 = glob.glob(f"{folder}/**/*R2_[0-9][0-9][0-9].fastq.gz") + glob.glob(
-        f"{folder}/*R2_[0-9][0-9][0-9].fastq.gz"
+    R2 = glob.glob(pattern_dir.format(strand="R2")) + glob.glob(
+        pattern_subdir.format(strand="R2")
     )
     return R1, R2
 
@@ -127,6 +129,7 @@ def demultiplex(
     groupcolumn=None,
     output_path="output",
     cores=8,
+    min_errors=0,
     max_errors=1,
     indels=False,
 ):
@@ -135,7 +138,7 @@ def demultiplex(
         tagfile,
         groupcolumn,
         output_path,
-        max_errors=0,
+        errors=min_errors,
         indels=indels,
     )
 
@@ -151,6 +154,8 @@ def demultiplex(
         if R1 is not None or R2 is not None:
             raise fire.Error("You cannot mix --folder and --R1/--R2 arguments")
         R1, R2 = get_fastq_files(folder)
+    
+    print(f"Number of files to demultiplex: {len(R1)}")
     if R2:
         assert len(R1) == len(R2)
 
@@ -177,7 +182,7 @@ def demultiplex(
                 outmatefq=outmatefq,
                 cores=cores,
                 indels=indels,
-                max_errors=0,
+                errors=min_errors,
             )
             unmapped_readfq = outreadfq.format(name="unknown")
             unmapped_matefq = outmatefq.format(name="unknown")
@@ -192,7 +197,7 @@ def demultiplex(
                 outmatefq=outreadfq_rev,
                 cores=cores,
                 indels=indels,
-                max_errors=0,
+                errors=min_errors,
             )
 
             unmapped_readfq = outreadfq.format(name="unknown_rev")
