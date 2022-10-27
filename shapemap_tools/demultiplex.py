@@ -75,17 +75,17 @@ def prepare_tagfile(tagfile, groupcolumn, output_path, max_errors=0, indels=Fals
     tagfile_path = os.path.join(output_path, "tags.tsv")
     outtag.to_csv(tagfile_path, sep="\t")  # , index=False, header=False)
 
-    with open(os.path.join(output_path, "tags.fa"), "w") as fd, open(
-        os.path.join(output_path, "tags_mate.fa"), "w"
+    with open(os.path.join(output_path, f"tags_err{max_errors}.fa"), "w") as fd, open(
+        os.path.join(output_path, "tags_err{max_errors}_mate.fa"), "w"
     ) as fdm:
         for rid, row in outtag.iterrows():
             fd.write(
                 f">{row['name']}\n{row['tag']}"
-                f";e={max_errors};{indels};min_overlap={len(row['tag'])}\n"
+                f";e={max_errors};{indels};min_overlap={len(row['tag'])};rightmost\n"
             )
             fdm.write(
                 f">{row['name']}\n{row['mate_tag']}"
-                f";e={max_errors};{indels};min_overlap={len(row['mate_tag'])}\n"
+                f";e={max_errors};{indels};min_overlap={len(row['mate_tag'])};rightmost\n"
             )
 
     return tagfile_path[:-4]
@@ -135,7 +135,15 @@ def demultiplex(
         tagfile,
         groupcolumn,
         output_path,
-        max_errors=max_errors,
+        max_errors=0,
+        indels=indels,
+    )
+
+    tagfile_err1_path = prepare_tagfile(
+        tagfile,
+        groupcolumn,
+        output_path,
+        max_errors=1,
         indels=indels,
     )
 
@@ -169,7 +177,7 @@ def demultiplex(
                 outmatefq=outmatefq,
                 cores=cores,
                 indels=indels,
-                max_errors=max_errors,
+                max_errors=0,
             )
             unmapped_readfq = outreadfq.format(name="unknown")
             unmapped_matefq = outmatefq.format(name="unknown")
@@ -184,37 +192,68 @@ def demultiplex(
                 outmatefq=outreadfq_rev,
                 cores=cores,
                 indels=indels,
-                max_errors=max_errors,
+                max_errors=0,
             )
 
-        # os.remove(trimmed_readfq)
-        # os.remove(trimmed_matefq)
+            unmapped_readfq = outreadfq.format(name="unknown_rev")
+            unmapped_matefq = outmatefq.format(name="unknown_rev")
+            outreadfq_1err = outreadfq.format(name="{name}_1err")
+            outmatefq_1err = outmatefq.format(name="{name}_1err")
+            run_cutadapt_demultiplex_pairend(
+                readfq=unmapped_matefq,
+                matefq=unmapped_readfq,
+                # tagfile_path=tagfile_path + ".fa",
+                tagfile_path=tagfile_err1_path + "_mate.fa",
+                outreadfq=outmatefq_1err,
+                outmatefq=outreadfq_1err,
+                cores=cores,
+                indels=indels,
+                max_errors=1,
+            )
 
+            unmapped_readfq = outreadfq.format(name="unknown_1err")
+            unmapped_matefq = outmatefq.format(name="unknown_1err")
+            outreadfq_1err_rev = outreadfq.format(name="{name}_1err_rev")
+            outmatefq_1err_rev = outmatefq.format(name="{name}_1err_rev")
+            run_cutadapt_demultiplex_pairend(
+                readfq=unmapped_matefq,
+                matefq=unmapped_readfq,
+                # tagfile_path=tagfile_path + ".fa",
+                tagfile_path=tagfile_err1_path + "_mate.fa",
+                outreadfq=outmatefq_1err_rev,
+                outmatefq=outreadfq_1err_rev,
+                cores=cores,
+                indels=indels,
+                max_errors=1,
+            )
 
-#    else:
-#        for readfq in R1:
-#            intermed_readfq = os.path.dirname(
-#                readfq.removeprefix(folder.removesuffix("/") + "/")
-#            )
-#            if intermed_readfq != "" and intermed_readfq != "/":
-#                os.makedirs(os.path.join(output_path, intermed_readfq), exist_ok=True)
-#            trimmed_readfq = os.path.join(
-#                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
-#            )
-#            logger.info("Trimming end {os.path.basename(readfq)}")
-#
-#            outreadfq = output_pattern.format(
-#                output_path=os.path.join(output_path, matefq),
-#                prefix=basename_without_ext(readfq),
-#            )
-#            logger.info("Demultiplexing {os.path.basename(readfq)}")
-#            run_cutadapt_demultiplex(
-#                readfq=trimmed_readfq,
-#                tagfile_path=tagfile_path + ".fa",
-#                outreadfq=outreadfq,
-#                cores=cores,
-#            )
-#            os.remove(trimmed_readfq)
+            # os.remove(trimmed_readfq)
+            # os.remove(trimmed_matefq)
+
+            #    else:
+            #        for readfq in R1:
+            #            intermed_readfq = os.path.dirname(
+            #                readfq.removeprefix(folder.removesuffix("/") + "/")
+            #            )
+            #            if intermed_readfq != "" and intermed_readfq != "/":
+            #                os.makedirs(os.path.join(output_path, intermed_readfq), exist_ok=True)
+            #            trimmed_readfq = os.path.join(
+            #                output_path, intermed_readfq, "trimmed_" + os.path.basename(readfq)
+            #            )
+            #            logger.info("Trimming end {os.path.basename(readfq)}")
+            #
+            #            outreadfq = output_pattern.format(
+            #                output_path=os.path.join(output_path, matefq),
+            #                prefix=basename_without_ext(readfq),
+            #            )
+            #            logger.info("Demultiplexing {os.path.basename(readfq)}")
+            #            run_cutadapt_demultiplex(
+            #                readfq=trimmed_readfq,
+            #                tagfile_path=tagfile_path + ".fa",
+            #                outreadfq=outreadfq,
+            #                cores=cores,
+            #            )
+            #            os.remove(trimmed_readfq)
 
 
 def main():
@@ -224,9 +263,9 @@ def main():
 if __name__ == "__main__":
     main()
 
-# adapter3p = (
-#    "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
-#    + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG"  # Flowcell sequence ?
+    # adapter3p = (
+    #    "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"  # NEBNext Adapter
+    #    + "ATTCCTTTATCGGGGTTTGGGGGGTGGGGGATGATAAAATTGGTGTGGGGGGGG"  # Flowcell sequence ?
 # )
 #
 # nebnext_adapters = [
