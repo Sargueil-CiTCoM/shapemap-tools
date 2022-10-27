@@ -72,6 +72,70 @@ def gen_splitted_ref(ref_path, output_path) -> dict:
     return splitted
 
 
+def prepare_launch(config, samples):
+    runs = {}
+    splitted_refs = {}
+    afastq = {
+        "modified": {"R1": [], "R2": []},
+        "untreated": {"R1": [], "R2": []},
+        "denatured": {"R1": [], "R2": []},
+    }
+    os.makedirs(config["shapemapper_output"], exist_ok=True)
+    for rid, sample in samples.iterrows():
+        title = config["title_template"].format(**dict(sample))
+        runs[title] = {}
+        if config["split_seq"]:
+            cur_splitted_refs = gen_splitted_ref(
+                config["sequences"][sample["sequence"]],
+                os.path.join(config["shapemapper_output"], "sequences"),
+            )
+            splitted_refs[title] = cur_splitted_refs
+            for seq in cur_splitted_refs.keys():
+                #print(f"Preparing path for {title} - {seq}")
+                fastqs = copy.deepcopy(afastq)
+                for condtype in fastqs.keys():
+                    for readtype in fastqs[condtype].keys():
+                        for folder in config["data_folders"]:
+
+                            cur_glob_path = fastq_input_splitted_pattern.format(
+                                sequence=seq,
+                                input_path=folder,
+                                cond=sample[condtype],
+                                read=readtype,
+                            )
+                            cur_glob_path_rev = fastq_input_splitted_pattern.format(
+                                sequence=seq + "_rev",
+                                input_path=folder,
+                                cond=sample[condtype],
+                                read=readtype,
+                            )
+
+                            # print(f"PATH: {cur_glob_path}")
+                            fqs = glob.glob(cur_glob_path) + glob.glob(
+                                cur_glob_path_rev
+                            )
+                            fastqs[condtype][readtype].extend(fqs)
+
+                runs[title][seq] = fastqs
+        else:
+            fastqs = copy.deepcopy(afastq)
+            for condtype in fastqs.keys():
+                for readtype in fastqs[condtype].keys():
+                    for folder in config["data_folders"]:
+
+                        cur_glob_path = fastq_input_pattern.format(
+                            input_path=folder,
+                            cond=sample[condtype],
+                            read=readtype,
+                        )
+
+                        # print(f"PATH: {cur_glob_path}")
+                        fqs = glob.glob(cur_glob_path)
+                        fastqs[condtype][readtype].extend(fqs)
+            runs[title] = fastqs
+    return runs, splitted_refs
+
+
 #    reference: str,
 #    output_dir: str,
 #    name: str,
@@ -89,54 +153,36 @@ def gen_splitted_ref(ref_path, output_path) -> dict:
 #    extra_args: [str] = [],
 def launch_shapemapper(config_path, samples_path):
     samples = pd.read_csv(samples_path, sep="\t")
+    samples = samples[samples["discard"] != "yes"]
     with open(config_path, "r") as config_file:
         config = YAML.load(config_file)
-    print(config)
-    afastq = {
-        "modified": {"R1": [], "R2": []},
-        "untreated": {"R1": [], "R2": []},
-        "denatured": {"R1": [], "R2": []},
-    }
-    os.makedirs(config["shapemapper_output"], exist_ok=True)
-    for rid, sample in samples.iterrows():
-        if config["split_seq"]:
-            splitted_refs = gen_splitted_ref(
-                config["sequences"][sample["sequence"]],
-                os.path.join(config["shapemapper_output"], "sequences"),
+
+    runs, splitted_refs = prepare_launch(config, samples)
+
+    check_all_valid = True
+    for (title, seqs) in runs.items():
+        for seq, fastqs in seqs.items():
+            for condtype, strands in fastqs.items():
+                for strandname, strand in strands.items():
+                    if len(strand) == 0:
+                        print(f"{title} - {seq} - {condtype} - {strandname} : no input files")
+                        check_all_valid = False
+    if not check_all_valid:
+        print("WARNING some conditions have no data") 
+
+    for title, seqs in runs.items():
+        for seq, fastqs in seqs.items():
+            run_shapemapper(
+                reference=splitted_refs[title][seq],
+                output_dir=os.path.join(config["shapemapper_output"], title),
+                name=title,
+                log=os.path.join(
+                    config["shapemapper_output"],
+                    title,
+                    title + f"_{seq}.log",
+                ),
+                input_fastqs=fastqs,
             )
-            for seq in splitted_refs.keys():
-                fastqs = copy.deepcopy(afastq)
-                for condtype in fastqs.keys():
-                    for readtype in fastqs[condtype].keys():
-                        for folder in config["data_folders"]:
-                            cur_glob_path = fastq_input_splitted_pattern.format(
-                                sequence=seq,
-                                input_path=folder,
-                                cond=sample[condtype],
-                                read=readtype,
-                            )
-                            cur_glob_path_rev = fastq_input_splitted_pattern.format(
-                                sequence=seq + "_rev",
-                                input_path=folder,
-                                cond=sample[condtype],
-                                read=readtype,
-                            )
-                            
-                            # print(f"PATH: {cur_glob_path}")
-                            fqs = glob.glob(cur_glob_path) + glob.glob(cur_glob_path_rev)
-                            fastqs[condtype][readtype].extend(fqs)
-                title = config["title_template"].format(**dict(sample))
-                run_shapemapper(
-                    reference=splitted_refs[seq],
-                    output_dir=os.path.join(config["shapemapper_output"], title),
-                    name=title,
-                    log=os.path.join(
-                        config["shapemapper_output"],
-                        title,
-                        title + f"_{seq}.log",
-                    ),
-                    input_fastqs=fastqs,
-                )
 
 
 def main():
