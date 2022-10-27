@@ -75,8 +75,8 @@ def prepare_tagfile(tagfile, groupcolumn, output_path, errors=0, indels=False):
     tagfile_path = os.path.join(output_path, "tags.tsv")
     outtag.to_csv(tagfile_path, sep="\t")  # , index=False, header=False)
 
-    with open(os.path.join(output_path, f"tags_err{max_errors}.fa"), "w") as fd, open(
-        os.path.join(output_path, "tags_err{max_errors}_mate.fa"), "w"
+    with open(os.path.join(output_path, f"tags_err{errors}.fa"), "w") as fd, open(
+        os.path.join(output_path, f"tags_err{errors}_mate.fa"), "w"
     ) as fdm:
         for rid, row in outtag.iterrows():
             fd.write(
@@ -146,7 +146,7 @@ def demultiplex(
         tagfile,
         groupcolumn,
         output_path,
-        max_errors=1,
+        errors=1,
         indels=indels,
     )
 
@@ -176,7 +176,7 @@ def demultiplex(
             run_cutadapt_demultiplex_pairend(
                 readfq=readfq,
                 matefq=matefq,
-                tagfile_path=tagfile_path + "_mate.fa",
+                tagfile_path=tagfile_path + f"_err{min_errors}_mate.fa",
                 # tagfile_mate_path=tagfile_path + "_mate.fa",
                 outreadfq=outreadfq,
                 outmatefq=outmatefq,
@@ -192,7 +192,7 @@ def demultiplex(
                 readfq=unmapped_matefq,
                 matefq=unmapped_readfq,
                 # tagfile_path=tagfile_path + ".fa",
-                tagfile_path=tagfile_path + "_mate.fa",
+                tagfile_path=tagfile_path + f"_err{min_errors}_mate.fa",
                 outreadfq=outmatefq_rev,
                 outmatefq=outreadfq_rev,
                 cores=cores,
@@ -208,12 +208,12 @@ def demultiplex(
                 readfq=unmapped_matefq,
                 matefq=unmapped_readfq,
                 # tagfile_path=tagfile_path + ".fa",
-                tagfile_path=tagfile_err1_path + "_mate.fa",
+                tagfile_path=tagfile_err1_path + f"_err{max_errors}_mate.fa",
                 outreadfq=outmatefq_1err,
                 outmatefq=outreadfq_1err,
                 cores=cores,
                 indels=indels,
-                max_errors=1,
+                errors=1,
             )
 
             unmapped_readfq = outreadfq.format(name="unknown_1err")
@@ -224,12 +224,12 @@ def demultiplex(
                 readfq=unmapped_matefq,
                 matefq=unmapped_readfq,
                 # tagfile_path=tagfile_path + ".fa",
-                tagfile_path=tagfile_err1_path + "_mate.fa",
+                tagfile_path=tagfile_err1_path + f"_err{max_errors}_mate.fa",
                 outreadfq=outmatefq_1err_rev,
                 outmatefq=outreadfq_1err_rev,
                 cores=cores,
                 indels=indels,
-                max_errors=1,
+                errors=1,
             )
 
             # os.remove(trimmed_readfq)
