@@ -6,13 +6,14 @@ import glob
 import copy
 from . import fasta
 import os
+from tqdm import tqdm
 
 shapemapper_path = "/data/fxlyonnet/shapemapper-2.1.5/shapemapper"
 
 YAML = yaml.YAML()
 
-fastq_input_pattern = "{input_path}/{cond}/*{read}*.fastq*"
-fastq_input_splitted_pattern = "{input_path}/{cond}/*{read}*_{sequence}.fastq*"
+fastq_input_pattern = "{input_path}/{cond}/*_{read}_*.fastq*"
+fastq_input_splitted_pattern = "{input_path}/{cond}/*_{read}_*_{sequence}.fastq*"
 
 
 def run_shapemapper(
@@ -35,6 +36,7 @@ def run_shapemapper(
         str(cores),
         "--min-depth",
         str(min_depth),
+        # "--amplicon",
         "--target",
         reference,
         "--out",
@@ -54,7 +56,29 @@ def run_shapemapper(
             cmd.extend(fastqs)
 
     print(" ".join(cmd))
-    sp.run(cmd)
+    sp.run(cmd, stdout=None, stderr=None)
+
+
+def fasta_from_tsv(
+    tsv_path,
+    fasta_path,
+    name_col="name",
+    seq_col="sequence",
+    suffix_cols=["tag", "primer"],
+    prefix_cols=[],
+):
+    os.makedirs(os.path.dirname(fasta_path), exist_ok=True)
+    tsvdf = pd.read_csv(tsv_path, sep="\t")
+    with open(fasta_path, "w") as fd:
+        for rid, row in tsvdf.iterrows():
+            name = row[name_col].strip()
+            fd.write(f">{name}\n")
+            for col in prefix_cols:
+                fd.write(row[col].lower())
+            fd.write(row[seq_col])
+            for col in suffix_cols:
+                fd.write(row[col].lower())
+            fd.write("\n")
 
 
 def gen_splitted_ref(ref_path, output_path) -> dict:
@@ -81,17 +105,28 @@ def prepare_launch(config, samples):
         "denatured": {"R1": [], "R2": []},
     }
     os.makedirs(config["shapemapper_output"], exist_ok=True)
-    for rid, sample in samples.iterrows():
+    for rid, sample in tqdm(
+        samples.iterrows(), desc="Preparing path ", total=samples.shape[0]
+    ):
         title = config["title_template"].format(**dict(sample))
+        seq_file = config["sequences"][sample["sequence"]]
         runs[title] = {}
+        if os.path.splitext(seq_file)[-1] in [".tsv", ".csv"]:
+
+            seq_filename = os.path.basename(seq_file).split(".")[0]
+            fasta_path = os.path.join(
+                config["shapemapper_output"], "sequences", seq_filename + ".fasta"
+            )
+            fasta_from_tsv(seq_file, fasta_path)
+            config["sequences"][sample["sequence"]] = fasta_path
+            seq_file = fasta_path
         if config["split_seq"]:
             cur_splitted_refs = gen_splitted_ref(
-                config["sequences"][sample["sequence"]],
+                seq_file,
                 os.path.join(config["shapemapper_output"], "sequences"),
             )
             splitted_refs[title] = cur_splitted_refs
             for seq in cur_splitted_refs.keys():
-                #print(f"Preparing path for {title} - {seq}")
                 fastqs = copy.deepcopy(afastq)
                 for condtype in fastqs.keys():
                     for readtype in fastqs[condtype].keys():
@@ -151,7 +186,7 @@ def prepare_launch(config, samples):
 #    log: str = "log.log",
 #    overwrite=True,
 #    extra_args: [str] = [],
-def launch_shapemapper(config_path, samples_path):
+def launch_shapemapper(config_path, samples_path, interactive=False):
     samples = pd.read_csv(samples_path, sep="\t")
     samples = samples[samples["discard"] != "yes"]
     with open(config_path, "r") as config_file:
@@ -163,14 +198,26 @@ def launch_shapemapper(config_path, samples_path):
     for (title, seqs) in runs.items():
         for seq, fastqs in seqs.items():
             for condtype, strands in fastqs.items():
+                if len(strands["R1"]) != len(strands["R2"]):
+                    print(f"{title} - {seq} - {condtype} : len(R1) != len(R2)")
+                    check_all_valid = False
+
                 for strandname, strand in strands.items():
                     if len(strand) == 0:
-                        print(f"{title} - {seq} - {condtype} - {strandname} : no input files")
+                        print(
+                            f"{title} - {seq} - {condtype} - {strandname} : no input files"
+                        )
                         check_all_valid = False
     if not check_all_valid:
-        print("WARNING some conditions have no data") 
+        print("WARNING some conditions have no data")
+        if interactive:
+            cont = "ask"
+            while cont not in ["", "Y", "y", "n", "N", "yes", "no"]:
+                cont = input("Would you like to continue [Y/n]")
+            if cont == "n" or cont == "N" or cont == "no":
+                exit(1)
 
-    for title, seqs in runs.items():
+    for title, seqs in tqdm(runs.items(), total=len(runs), desc="Running Shapemapper "):
         for seq, fastqs in seqs.items():
             run_shapemapper(
                 reference=splitted_refs[title][seq],
