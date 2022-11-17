@@ -179,6 +179,20 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
 
 
 def main(globpath, outputpath, mode="conditions", shapemapper_path="shapemapper2"):
+    """main
+
+    normalize by condition
+    Parameters
+    ----------
+    globpath :
+        globpath
+    outputpath :
+        outputpath
+    mode :
+        mode
+    shapemapper_path :
+        shapemapper_path
+    """
 
     global shapemapper_bin_path
     shapemapper_bin_path = shapemapper_bin_path.format(
