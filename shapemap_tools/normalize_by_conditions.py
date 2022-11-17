@@ -32,10 +32,10 @@ def runNormalizeShapemapper(tonorm, normout):
     )
     # [print(arg,end=" ") for arg in cmd]
     try:
-        sp.run(cmd)
+        return sp.run(cmd, capture_output=True, text=True).returncode
     except Exception as e:
         raise e
-        pass
+#        pass
 
 
 def runTabToShape(profile_file, map_file, shape_file):
@@ -50,10 +50,10 @@ def runTabToShape(profile_file, map_file, shape_file):
         shape_file,
     ]
     try:
-        sp.run(cmd)
+        return sp.run(cmd, capture_output=True, text=True).returncode
     except Exception as e:
         raise e
-        pass
+#        pass
 
 
 def runRenderFigures(
@@ -74,10 +74,10 @@ def runRenderFigures(
         plot_file,
     ]
     try:
-        sp.run(cmd)
+        return sp.run(cmd, capture_output=True, text=True).returncode
     except Exception as e:
         raise e
-        pass
+#        pass
 
 
 def normalize_through_all(path, outputpath, sequences, conditions):
@@ -150,32 +150,38 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
     ]
 
     print(f"Start {seqid}")
-    runNormalizeShapemapper(tonorm, normout)
-    for cond in conditions:
-        print(f"Start {cond} ({seqid})")
-        runTabToShape(
-            utils.profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
-            map_file=utils.map_pattern.format(
-                path=outputpath, condition=cond, seqid=seqid
-            ),
-            shape_file=utils.shape_pattern.format(
-                path=outputpath, condition=cond, seqid=seqid
-            ),
-        )
-        runRenderFigures(
-            utils.profile_pattern.format(
-                path=outputpath,
-                condition=cond,
-                seqid=seqid,
-            ),
-            title=utils.title_pattern.format(condition=cond, seqid=seqid),
-            plot_file=utils.plot_profiles_pattern.format(
-                path=outputpath, condition=cond, seqid=seqid
-            ),
-            histo_file=utils.plot_histo_pattern.format(
-                path=outputpath, condition=cond, seqid=seqid
-            ),
-        )
+    retcode = runNormalizeShapemapper(tonorm, normout)
+    if retcode == 0:
+        for cond in conditions:
+            print(f"Start {cond} ({seqid})")
+            tts_retcode = runTabToShape(
+                utils.profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
+                map_file=utils.map_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+                shape_file=utils.shape_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+            )
+            if tts_retcode == 0:
+                runRenderFigures(
+                    utils.profile_pattern.format(
+                        path=outputpath,
+                        condition=cond,
+                        seqid=seqid,
+                    ),
+                    title=utils.title_pattern.format(condition=cond, seqid=seqid),
+                    plot_file=utils.plot_profiles_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                    histo_file=utils.plot_histo_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                )
+            else:
+                print(f"Shape conversion error for sequence {seqid} - {cond}")
+    else:
+        print(f"Normalization error for sequence {seqid}")
 
 
 def main(globpath, outputpath, mode="conditions", shapemapper_path="shapemapper2"):

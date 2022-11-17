@@ -6,7 +6,7 @@ import glob
 import parse
 from . import fasta
 
-varna_path = "VARNAcmd.jar"
+varna_path = os.path.join (os.path.dirname(__file__),"VARNAcmd.jar")
 
 
 def run_varna_thread(config, condition, rna, sequence, shape, outputdir):
@@ -133,6 +133,7 @@ def gen_structures(
         #    **kwargs,
         # )
         run_thread(**kwargs)
+        run_varna_thread(**kwargs)
         # pool.apply_async(
         #    run_thread,
         #    kwds=kwargs,
