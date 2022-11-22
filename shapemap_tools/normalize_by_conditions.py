@@ -199,7 +199,7 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
                 ),
             )
             if tts_retcode == 0:
-                runRenderFigures(
+                rrf_retcode = runRenderFigures(
                     utils.profile_pattern.format(
                         path=outputpath,
                         condition=cond,
@@ -213,6 +213,9 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
                         path=outputpath, condition=cond, seqid=seqid
                     ),
                 )
+                if rrf_retcode == 0:
+                    print("Rendering figure failed {seqid} - {cond}")
+
             else:
                 print(f"Shape conversion error for sequence {seqid} - {cond}")
     else:
