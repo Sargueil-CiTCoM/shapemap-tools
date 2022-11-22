@@ -9,6 +9,7 @@ import fire
 import subprocess as sp
 import glob
 from . import utils
+from tqdm import tqdm
 
 # import multiprocessing as mp
 
@@ -32,9 +33,16 @@ def runNormalizeShapemapper(tonorm, normout):
     )
     # [print(arg,end=" ") for arg in cmd]
     try:
-        return sp.run(cmd, capture_output=True, text=True).returncode
+        res = sp.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print(" ".join(cmd))
+            print(res.stdout)
+            print(res.stderr)
+        return res.returncode
     except Exception as e:
         raise e
+
+
 #        pass
 
 
@@ -50,9 +58,16 @@ def runTabToShape(profile_file, map_file, shape_file):
         shape_file,
     ]
     try:
-        return sp.run(cmd, capture_output=True, text=True).returncode
+        res = sp.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print(" ".join(cmd))
+            print(res.stdout)
+            print(res.stderr)
+        return res.returncode
     except Exception as e:
         raise e
+
+
 #        pass
 
 
@@ -74,9 +89,16 @@ def runRenderFigures(
         plot_file,
     ]
     try:
-        return sp.run(cmd, capture_output=True, text=True).returncode
+        res = sp.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print(" ".join(cmd))
+            print(res.stdout)
+            print(res.stderr)
+        return res.returncode
     except Exception as e:
         raise e
+
+
 #        pass
 
 
@@ -101,7 +123,13 @@ def normalize_through_all(path, outputpath, sequences, conditions):
 
     runNormalizeShapemapper(tonorm, normout)
 
-    for cond in conditions:
+    for cond in tqdm(
+        conditions,
+        total=len(conditions),
+        desc="conditions for {seqid}",
+        position=1,
+        leave=False,
+    ):
         for seqid in sequences:
             print(f"Start {cond} ({seqid})")
             runTabToShape(
@@ -149,13 +177,20 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
         )
     ]
 
-    print(f"Start {seqid}")
+    # print(f"Start {seqid}")
     retcode = runNormalizeShapemapper(tonorm, normout)
     if retcode == 0:
-        for cond in conditions:
-            print(f"Start {cond} ({seqid})")
+        for cond in tqdm(
+            conditions,
+            total=len(conditions),
+            desc=f"conditions for {seqid}",
+            position=1,
+            leave=False,
+        ):
             tts_retcode = runTabToShape(
-                utils.profile_pattern.format(path=outputpath, condition=cond, seqid=seqid),
+                utils.profile_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
                 map_file=utils.map_pattern.format(
                     path=outputpath, condition=cond, seqid=seqid
                 ),
@@ -184,7 +219,13 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
         print(f"Normalization error for sequence {seqid}")
 
 
-def main(globpath, outputpath, mode="conditions", shapemapper_path="shapemapper2"):
+def main(
+    globpath,
+    outputpath,
+    mode="conditions",
+    shapemapper_path="shapemapper2",
+    condition_prefix="",
+):
     """main
 
     normalize by condition
@@ -205,16 +246,25 @@ def main(globpath, outputpath, mode="conditions", shapemapper_path="shapemapper2
         shapemapper_path=shapemapper_path
     )
     os.makedirs(outputpath, exist_ok=True)
-    conditions = [os.path.basename(path) for path in glob.glob(f"{globpath}/*")]
+    conditions = [
+        os.path.basename(path) for path in glob.glob(f"{globpath}/{condition_prefix}*")
+    ]
 
     sequences = set()
-    for cond in conditions:
+    for cond in tqdm(
+        conditions,
+        total=len(conditions),
+        desc="Preparing paths",
+        position=0,
+        leave=False,
+    ):
         os.makedirs(os.path.join(outputpath, cond), exist_ok=True)
     sequences = utils.get_sequences(globpath, conditions)
 
     if mode == "conditions":
-        for seqid in sequences:
-            print(f"Prep {seqid}")
+        for seqid in tqdm(
+            sequences, total=len(sequences), desc="Normalizing", position=0
+        ):
             args = (globpath, outputpath, seqid, conditions)
             normalize_through_conditions(*args)
             # pool.apply_async(normalize_through_conditions, args)

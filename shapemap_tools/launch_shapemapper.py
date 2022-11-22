@@ -55,9 +55,9 @@ def run_shapemapper(
             cmd.append(f"--{readtype}")
             cmd.extend(fastqs)
 
-    #print(" ".join(cmd))
+    # print(" ".join(cmd))
     try:
-        sp.run(cmd, capture_output=True, text=True) 
+        sp.run(cmd, capture_output=True, text=True)
     except:
         print(f"Error launching shapemapper for {name}")
 
@@ -220,9 +220,12 @@ def launch_shapemapper(config_path, samples_path, interactive=False):
             if cont == "n" or cont == "N" or cont == "no":
                 exit(1)
 
-    for title, seqs in tqdm(runs.items(), total=len(runs), desc="Running Shapemapper ",
-                            position=0):
-        for seq, fastqs in tqdm(seqs.items(), total=len(seqs), desc=title, position=1, leave=False):
+    for title, seqs in tqdm(
+        runs.items(), total=len(runs), desc="Running Shapemapper ", position=0
+    ):
+        for seq, fastqs in tqdm(
+            seqs.items(), total=len(seqs), desc=title, position=1, leave=False
+        ):
             run_shapemapper(
                 reference=splitted_refs[title][seq],
                 output_dir=os.path.join(config["shapemapper_output"], title),

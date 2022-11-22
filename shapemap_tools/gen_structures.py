@@ -5,7 +5,7 @@ import fire
 import glob
 import parse
 from . import fasta
-
+from tqdm import tqdm
 varna_path = os.path.join (os.path.dirname(__file__),"VARNAcmd.jar")
 
 
@@ -51,7 +51,10 @@ def runVARNA(struct_file, shape_file, title, output_file, resolution=1.0):
         "-resolution",
         str(resolution),
     ]
-    sp.run(cmd)
+    try:
+        return sp.run(cmd, capture_output=True, text=True).returncode
+    except Exception as e:
+        raise e
 
 
 def run_thread(config, condition, rna, sequence, shape, outputdir):
@@ -82,10 +85,13 @@ def run_ipanemap(config, condition, sequence, shape, dbn, tmp_outputdir):
         "--out-dir",
         tmp_outputdir,
     ]
-    print(" ".join(cmd))
-    print(f"Starting {condition}")
-    sp.run(cmd)
-    print(f"End {condition}")
+    #print(" ".join(cmd))
+    #print(f"Starting {condition}")
+    try:
+        return sp.run(cmd, capture_output=True, text=True).returncode
+    except Exception as e:
+        raise e
+    #print(f"End {condition}")
 
 
 def gen_structures(
@@ -117,7 +123,8 @@ def gen_structures(
     for cond in conditions:
         os.makedirs(f"{output_dir}/{cond}/tmp", exist_ok=True)
     # pool = mp.Pool(24)
-    for file in shape_files_path:
+    for file in tqdm(shape_files_path, desc="gen structures",
+                     total=len(shape_files_path), ):
         base_name = os.path.basename(parse.parse("{name}.shape", file).named["name"])
         condname = os.path.basename(os.path.dirname(file))
         rna_name = base_name.split("_")[-1]
