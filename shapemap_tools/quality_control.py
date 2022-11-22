@@ -12,7 +12,7 @@ def report(data_path, dev=False):
     env = os.environ.copy()
     env["DATA_PATH"] = os.path.abspath(data_path)
     if dev:
-        subprocess.Popen(["jupyter-notebook", path], env=env)
+        subprocess.run(["jupyter-notebook", path], env=env)
     else:
         subprocess.Popen(["voila", path], env=env)
 

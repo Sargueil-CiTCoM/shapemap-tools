@@ -4,10 +4,18 @@ from ruamel.yaml import YAML
 
 yaml = YAML()
 base_path = "{path}/{condition}/"
+compare_base_path = (
+    "{path}/{comp_prefix}{condition1}{conditions_separator}{condition2}/"
+)
 profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
 shape_pattern = base_path + "{condition}_{seqid}.shape"
 map_pattern = base_path + "{condition}_{seqid}.map"
+svg_structure_pattern = base_path + "{condition}_{seqid}{index}.svg"
+varna_structure_pattern = base_path + "{condition}_{seqid}.varna"
 title_pattern = "{seqid} {condition}"
+delta_comp_pattern = (
+    compare_base_path + "{condition1}{conditions_separator}{condition2}.svg"
+)
 aggregate_pattern = base_path + "{condition}_{seqid}_aggregated.tsv"
 plot_pattern = base_path + "{condition}_{seqid}_aggregated.svg"
 plot_full_pattern = base_path + "{condition}_{seqid}_aggregated_full.svg"
@@ -42,6 +50,22 @@ def get_sequences(path, conditions):
             }
         )
     return sequences
+
+
+def conditions_from_path(project_path, condition_prefix):
+    return [
+        os.path.basename(path)
+        for path in glob.glob(f"{project_path}/{condition_prefix}*")
+    ]
+
+
+def comparisons_from_path(
+    project_path, condition_prefix, comp_prefix="comp_", conditions_separator="__"
+):
+    return [
+        (cond[len(condition_prefix) :] for cond in path.split(conditions_separator))
+        for path in glob.glob(f"{project_path}/{comp_prefix}*")
+    ]
 
 
 class Config:
