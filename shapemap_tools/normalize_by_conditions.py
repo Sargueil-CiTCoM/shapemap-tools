@@ -12,7 +12,7 @@ from . import utils
 from tqdm import tqdm
 
 # import multiprocessing as mp
-
+import logging
 
 shapemapper_bin_path = "{shapemapper_path}/internals/bin/"
 norm_script_path = "{shapemapper_bin_path}/normalize_profiles.py"
@@ -35,9 +35,9 @@ def runNormalizeShapemapper(tonorm, normout):
     try:
         res = sp.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
-            print(" ".join(cmd))
-            print(res.stdout)
-            print(res.stderr)
+            logging.error(" ".join(cmd))
+            logging.error(res.stderr)
+            logging.error(res.stdout)
         return res.returncode
     except Exception as e:
         raise e
@@ -60,9 +60,9 @@ def runTabToShape(profile_file, map_file, shape_file):
     try:
         res = sp.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
-            print(" ".join(cmd))
-            print(res.stdout)
-            print(res.stderr)
+            logging.error(" ".join(cmd))
+            logging.error(res.stderr)
+            logging.error(res.stdout)
         return res.returncode
     except Exception as e:
         raise e
@@ -90,10 +90,10 @@ def runRenderFigures(
     ]
     try:
         res = sp.run(cmd, capture_output=True, text=True)
-        if res.returncode != 0:
-            print(" ".join(cmd))
-            print(res.stdout)
-            print(res.stderr)
+        if True: # res.returncode != 0:
+            logging.error(" ".join(cmd))
+            logging.error(res.stderr)
+            logging.error(res.stdout)
         return res.returncode
     except Exception as e:
         raise e
@@ -178,7 +178,8 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
     ]
 
     # print(f"Start {seqid}")
-    retcode = runNormalizeShapemapper(tonorm, normout)
+    #retcode = runNormalizeShapemapper(tonorm, normout)
+    retcode = 0
     if retcode == 0:
         for cond in tqdm(
             conditions,
@@ -187,17 +188,18 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
             position=1,
             leave=False,
         ):
-            tts_retcode = runTabToShape(
-                utils.profile_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                map_file=utils.map_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                shape_file=utils.shape_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-            )
+            #tts_retcode = runTabToShape(
+            #    utils.profile_pattern.format(
+            #        path=outputpath, condition=cond, seqid=seqid
+            #    ),
+            #    map_file=utils.map_pattern.format(
+            #        path=outputpath, condition=cond, seqid=seqid
+            #    ),
+            #    shape_file=utils.shape_pattern.format(
+            #        path=outputpath, condition=cond, seqid=seqid
+            #    ),
+            #)
+            tts_retcode = 0
             if tts_retcode == 0:
                 rrf_retcode = runRenderFigures(
                     utils.profile_pattern.format(
@@ -213,7 +215,7 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
                         path=outputpath, condition=cond, seqid=seqid
                     ),
                 )
-                if rrf_retcode == 0:
+                if rrf_retcode != 0:
                     print("Rendering figure failed {seqid} - {cond}")
 
             else:
@@ -228,6 +230,7 @@ def main(
     mode="conditions",
     shapemapper_path="shapemapper2",
     condition_prefix="",
+    log="normalize_by_cond.log"
 ):
     """main
 
@@ -244,6 +247,7 @@ def main(
         shapemapper_path
     """
 
+    logging.basicConfig(level=logging.DEBUG, filename=log)
     global shapemapper_bin_path
     shapemapper_bin_path = shapemapper_bin_path.format(
         shapemapper_path=shapemapper_path
