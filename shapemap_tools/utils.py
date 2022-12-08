@@ -1,6 +1,8 @@
 import os
 import glob
 from ruamel.yaml import YAML
+import pandas as pd
+from . import fasta
 
 yaml = YAML()
 base_path = "{path}/{condition}/"
@@ -12,7 +14,7 @@ shape_pattern = base_path + "{condition}_{seqid}.shape"
 map_pattern = base_path + "{condition}_{seqid}.map"
 svg_structure_pattern = base_path + "{condition}_{seqid}{index}.svg"
 varna_structure_pattern = base_path + "{condition}_{seqid}.varna"
-title_pattern = "{seqid} {condition}"
+title_pattern = "{seqid}_{condition}"
 delta_comp_pattern = (
     compare_base_path + "{condition1}{conditions_separator}{condition2}.svg"
 )
@@ -34,6 +36,43 @@ class ReactivityThreshold:
     COLOR_LOW = "yellow"
     COLOR_MEDIUM = "orange"
     COLOR_HIGH = "red"
+
+
+def fasta_from_tsv(
+    tsv_path,
+    fasta_path,
+    name_col="name",
+    seq_col="sequence",
+    suffix_cols=["tag", "primer"],
+    prefix_cols=[],
+):
+    os.makedirs(os.path.dirname(fasta_path), exist_ok=True)
+    tsvdf = pd.read_csv(tsv_path, sep="\t")
+    with open(fasta_path, "w") as fd:
+        for rid, row in tsvdf.iterrows():
+            name = row[name_col].strip()
+            fd.write(f">{name}\n")
+            for col in prefix_cols:
+                fd.write(row[col].lower())
+            fd.write(row[seq_col])
+            for col in suffix_cols:
+                fd.write(row[col].lower())
+            fd.write("\n")
+
+
+def gen_splitted_ref(ref_path, output_path) -> dict:
+    os.makedirs(output_path, exist_ok=True)
+
+    splitted = {}
+    ref_path_prefix = os.path.basename(ref_path).split(os.extsep)[0]
+    for name, seq in fasta.fasta_iter(ref_path):
+        cur_out_path = os.path.join(output_path, f"{ref_path_prefix}_{name}.fasta")
+        with open(cur_out_path, "w") as fd:
+            fd.write(f">{name}\n")
+            fd.write(seq)
+        splitted[name] = cur_out_path
+
+    return splitted
 
 
 def get_sequences(path, conditions):
@@ -69,12 +108,66 @@ def comparisons_from_path(
 
 
 class Config:
-    def __init__(self, path):
-        self._config = self.read_config(path)
-        self.paths = self._config["paths"]
-        self.conditions = self._config["conditions"]
+    def __init__(self, config_path):
+        with open(config_path, "r") as config_file:
+            self.config = yaml.load(config_file)
 
-        self.sequences = self.get_sequences()
+        sample_path = os.path.join(
+            os.path.dirname(config_path), self.config["samples_file"]
+        )
+        self.samples = pd.read_csv(sample_path, sep="\t")
+        self.samples = self.samples[self.samples["discard"] != "yes"]
+        self.sequences_id = set()
+        #print(self.config["sequences"])
+        for seqs_id, seqs_path in self.config["sequences"].items():
+            df = pd.read_csv(seqs_path, sep="\t")
+            self.sequences_id = self.sequences_id.union(df["name"])
+
+    def parameters(self):
+        return list(self.config["parameters"])
+
+    def conditions(self, replicate_col=False):
+        ext_params = self.parameters()
+        ext_params.append("sequence")
+        if replicate_col:
+            ext_params.append("replicate")
+
+        res = self.samples[ext_params].drop_duplicates()
+        return res
+
+    def path_config(self, reps=["rep0", "rep1", "rep2", "rep3"]):
+        pc = PathConfig()
+        pc.paths = {idx: self.config["shapemapper_output_norm"] for idx in reps}
+
+        pc.conditions = {}
+        for rid, condition in self.conditions().iterrows():
+            cond_dict = condition.to_dict()
+            # print("COND", condition.to_dict())
+            name = self.config["title_template"].format(replicate="all", **cond_dict)
+            pc.conditions[name] = {}
+            mcond = self.samples.loc[
+                (self.samples.loc[:, cond_dict.keys()] == cond_dict.values()).all(
+                    axis=1
+                )
+            ]
+            for rid, subcond in mcond.iterrows():
+                pc.conditions[name][subcond["replicate"]] = self.config[
+                    "title_template"
+                ].format(**subcond)
+        pc.sequences = self.sequences_id
+        return pc
+
+
+class PathConfig:
+    def __init__(self, path=None):
+        if path:
+            self._config = self.read_config(path)
+            self.paths = self._config["paths"]
+            self.conditions = self._config["conditions"]
+            self.sequences = self.get_reps_sequences()
+        else:
+            self.paths = []
+            self.conditions = []
 
     def read_config(self, config_path: str):
         with open(config_path, "r") as fd:

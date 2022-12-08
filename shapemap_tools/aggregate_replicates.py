@@ -12,7 +12,7 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import gc
 import fire
-import utils
+from . import utils
 
 # pd.set_option("display.max_rows", None)  # or 1000
 
@@ -72,7 +72,7 @@ def plot_aggregate(
         color="k",
         ls="none",
         capsize=4,
-        linewidth=0.5,
+    linewidth=0.5,
     )
     try:
         plt.tight_layout()
@@ -150,12 +150,21 @@ def plot_aggregate(
         print(f"Unable to save plot: {e}")
         open(output, "a").close()
 
-
 def aggregate_replicates(
-    output_path: str = "output", input_dirs: [str] = [], config_path: str = None
+    output_path: str = "output",
+    input_dirs: [str] = [],
+    path_config_path: str = None,
+    config_path: str = None,
 ):
-    config = utils.Config(config_path)
+    if path_config_path:
+        config = utils.PathConfig(path_config_path)
+    else:
+        base_config = utils.Config(config_path)
+        config = base_config.path_config()
+
     sequences = config.sequences
+    assert len(sequences) > 0
+    #print(sequences)
     profiles = {}
 
     for condname, reps in config.conditions.items():
@@ -165,6 +174,7 @@ def aggregate_replicates(
             repsdf = {}
             for rep_id, rep_path in reps.items():
                 try:
+                    print(rep_path)
                     curdf = pd.read_csv(
                         utils.map_pattern.format(
                             path=config.paths[rep_id],
@@ -179,8 +189,8 @@ def aggregate_replicates(
                     repsdf[rep_id] = curdf
                     # profiles[condname][seqid][rep_id] = curdf["reactivity"]
 
-                except FileNotFoundError:
-                    pass
+                except FileNotFoundError as fnfe:
+                    print(fnfe)
             if len(repsdf) > 0:
                 profiles[condname][seqid] = pd.concat(repsdf, axis=1)
                 conds = [
@@ -213,15 +223,17 @@ def aggregate_replicates(
         )
         for seqid, profile in seqs_profiles.items():
             if profile is not None:
+                print(profile)
                 profile.to_csv(
                     utils.aggregate_pattern.format(
                         path=output_path, condition=condname, seqid=seqid
                     ),
                     sep="\t",
+                    
                 )
                 write_shape(output_path, condname, seqid, profile)
                 write_map(output_path, condname, seqid, profile)
-    plot_all(output_path, profiles)
+    #plot_all(output_path, profiles)
 
 
 def write_shape(output_path, condition, seqid, profile):
@@ -288,8 +300,11 @@ def plot_all(output_path, profiles):
             # curdf[["seqNum", "mean"]]
             # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.shape",sep="\t",
             # header=None,index=False)
+
+
 def main():
     fire.Fire(aggregate_replicates)
+
 
 if __name__ == "__main__":
     main()

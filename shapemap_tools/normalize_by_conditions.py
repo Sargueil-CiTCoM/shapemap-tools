@@ -88,18 +88,34 @@ def runRenderFigures(
         "--plot",
         plot_file,
     ]
+
     try:
         res = sp.run(cmd, capture_output=True, text=True)
         if True: # res.returncode != 0:
             logging.error(" ".join(cmd))
             logging.error(res.stderr)
             logging.error(res.stdout)
-        return res.returncode
+        
     except Exception as e:
         raise e
 
+    try:
+        res1 = sp.run(["pdf2svg", plot_file, os.path.splitext(plot_file)[0] + ".svg"],
+               capture_output=True, text=True)
+        res2 = sp.run(["pdf2svg", histo_file, os.path.splitext(histo_file)[0] + ".svg"],
+               capture_output=True, text=True)
 
-#        pass
+        if True: # res.returncode != 0:
+            logging.warning(res.stderr)
+            logging.warning(res.stdout)
+            logging.warning(res2.stderr)
+            logging.warning(res2.stdout)
+        
+    except Exception as e:
+        print(e)
+
+    return res.returncode
+
 
 
 def normalize_through_all(path, outputpath, sequences, conditions):
@@ -216,7 +232,7 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
                     ),
                 )
                 if rrf_retcode != 0:
-                    print("Rendering figure failed {seqid} - {cond}")
+                    print(f"Rendering figure failed {seqid} - {cond}")
 
             else:
                 print(f"Shape conversion error for sequence {seqid} - {cond}")
