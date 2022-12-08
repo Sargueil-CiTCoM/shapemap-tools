@@ -22,7 +22,9 @@ aggregate_pattern = base_path + "{condition}_{seqid}_aggregated.tsv"
 plot_pattern = base_path + "{condition}_{seqid}_aggregated.svg"
 plot_full_pattern = base_path + "{condition}_{seqid}_aggregated_full.svg"
 plot_histo_pattern = base_path + "{condition}_{seqid}_histograms.pdf"
+plot_histo_svg_pattern = base_path + "{condition}_{seqid}_histograms.svg"
 plot_profiles_pattern = base_path + "{condition}_{seqid}_profiles.pdf"
+plot_profiles_svg_pattern = base_path + "{condition}_{seqid}_profiles.svg"
 
 
 class ReactivityThreshold:
