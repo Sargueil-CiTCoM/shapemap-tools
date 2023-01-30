@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# /usr/bin/env python3
 # coding: utf-8
 
 # In[1]:
@@ -91,31 +91,36 @@ def runRenderFigures(
 
     try:
         res = sp.run(cmd, capture_output=True, text=True)
-        if True: # res.returncode != 0:
+        if True:  # res.returncode != 0:
             logging.error(" ".join(cmd))
             logging.error(res.stderr)
             logging.error(res.stdout)
-        
+
     except Exception as e:
         raise e
 
     try:
-        res1 = sp.run(["pdf2svg", plot_file, os.path.splitext(plot_file)[0] + ".svg"],
-               capture_output=True, text=True)
-        res2 = sp.run(["pdf2svg", histo_file, os.path.splitext(histo_file)[0] + ".svg"],
-               capture_output=True, text=True)
+        res1 = sp.run(
+            ["pdf2svg", plot_file, os.path.splitext(plot_file)[0] + ".svg"],
+            capture_output=True,
+            text=True,
+        )
+        res2 = sp.run(
+            ["pdf2svg", histo_file, os.path.splitext(histo_file)[0] + ".svg"],
+            capture_output=True,
+            text=True,
+        )
 
-        if True: # res.returncode != 0:
-            logging.warning(res.stderr)
-            logging.warning(res.stdout)
+        if True:  # res.returncode != 0:
+            logging.warning(res1.stderr)
+            logging.warning(res1.stdout)
             logging.warning(res2.stderr)
             logging.warning(res2.stdout)
-        
+
     except Exception as e:
         print(e)
 
     return res.returncode
-
 
 
 def normalize_through_all(path, outputpath, sequences, conditions):
@@ -193,8 +198,8 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
         )
     ]
 
-    # print(f"Start {seqid}")
-    #retcode = runNormalizeShapemapper(tonorm, normout)
+    print(f"Start {seqid}")
+    retcode = runNormalizeShapemapper(tonorm, normout)
     retcode = 0
     if retcode == 0:
         for cond in tqdm(
@@ -204,17 +209,17 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
             position=1,
             leave=False,
         ):
-            #tts_retcode = runTabToShape(
-            #    utils.profile_pattern.format(
-            #        path=outputpath, condition=cond, seqid=seqid
-            #    ),
-            #    map_file=utils.map_pattern.format(
-            #        path=outputpath, condition=cond, seqid=seqid
-            #    ),
-            #    shape_file=utils.shape_pattern.format(
-            #        path=outputpath, condition=cond, seqid=seqid
-            #    ),
-            #)
+            tts_retcode = runTabToShape(
+                utils.profile_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+                map_file=utils.map_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+                shape_file=utils.shape_pattern.format(
+                    path=outputpath, condition=cond, seqid=seqid
+                ),
+            )
             tts_retcode = 0
             if tts_retcode == 0:
                 rrf_retcode = runRenderFigures(
@@ -240,13 +245,25 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
         print(f"Normalization error for sequence {seqid}")
 
 
+def split_conds_by_rep(conditions):
+    cond_by_reps = {}
+
+    for cond in conditions:
+        rep = cond.split("_")[-1]
+        if rep not in cond_by_reps:
+            cond_by_reps[rep] = []
+        cond_by_reps[rep].append(cond)
+
+    return cond_by_reps
+
+
 def main(
     globpath,
     outputpath,
     mode="conditions",
     shapemapper_path="shapemapper2",
     condition_prefix="",
-    log="normalize_by_cond.log"
+    log="normalize_by_cond.log",
 ):
     """main
 
@@ -291,6 +308,16 @@ def main(
             args = (globpath, outputpath, seqid, conditions)
             normalize_through_conditions(*args)
             # pool.apply_async(normalize_through_conditions, args)
+    if mode == "conditions-reps":
+        for seqid in tqdm(
+            sequences, total=len(sequences), desc="Normalizing", position=0
+        ):
+
+            cond_by_reps = split_conds_by_rep(conditions)
+            for cbr in cond_by_reps:
+                args = (globpath, outputpath, seqid, cbr)
+                normalize_through_conditions(*args)
+
     elif mode == "all":
         args = (globpath, outputpath, sequences, conditions)
         normalize_through_all(*args)
