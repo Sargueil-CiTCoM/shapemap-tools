@@ -13,8 +13,11 @@ import matplotlib.pyplot as plt
 import gc
 import fire
 from . import utils
+from tqdm import tqdm
 
 # pd.set_option("display.max_rows", None)  # or 1000
+
+import warnings
 
 
 def plot_aggregate(
@@ -72,7 +75,7 @@ def plot_aggregate(
         color="k",
         ls="none",
         capsize=4,
-    linewidth=0.5,
+        linewidth=0.5,
     )
     try:
         plt.tight_layout()
@@ -150,6 +153,7 @@ def plot_aggregate(
         print(f"Unable to save plot: {e}")
         open(output, "a").close()
 
+
 def aggregate_replicates(
     output_path: str = "output",
     input_dirs: [str] = [],
@@ -164,17 +168,24 @@ def aggregate_replicates(
 
     sequences = config.sequences
     assert len(sequences) > 0
-    #print(sequences)
+    # print(sequences)
     profiles = {}
 
-    for condname, reps in config.conditions.items():
-        print(f"Aggregating {condname}")
+    for condname, reps in tqdm(
+        config.conditions.items(), total=len(config.conditions.items()), position=0
+    ):
         profiles[condname] = {}
-        for seqid in sequences:
+        for seqid in tqdm(
+            sequences,
+            total=len(sequences),
+            position=1,
+            leave=0,
+            desc=f"Aggregating {condname}",
+        ):
             repsdf = {}
             for rep_id, rep_path in reps.items():
                 try:
-                    print(rep_path)
+                    # print(rep_path)
                     curdf = pd.read_csv(
                         utils.map_pattern.format(
                             path=config.paths[rep_id],
@@ -190,7 +201,9 @@ def aggregate_replicates(
                     # profiles[condname][seqid][rep_id] = curdf["reactivity"]
 
                 except FileNotFoundError as fnfe:
-                    print(fnfe)
+                    # print(lol)
+                    # print(fnfe)
+                    pass
             if len(repsdf) > 0:
                 profiles[condname][seqid] = pd.concat(repsdf, axis=1)
                 conds = [
@@ -210,38 +223,39 @@ def aggregate_replicates(
                 profiles[condname][seqid]["sem"] = profiles[condname][seqid][conds].sem(
                     axis=1, ddof=1
                 )
-                profiles[condname][seqid]["mad"] = profiles[condname][seqid][conds].mad(
-                    axis=1
-                )
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    profiles[condname][seqid]["mad"] = profiles[condname][seqid][
+                        conds
+                    ].mad(axis=1)
             else:
                 profiles[condname][seqid] = None
 
     os.makedirs(output_path, exist_ok=True)
-    for condname, seqs_profiles in profiles.items():
+    for condname, seqs_profiles in tqdm(
+        profiles.items(), total=len(profiles.items()), desc="Writing files"
+    ):
         os.makedirs(
             utils.base_path.format(path=output_path, condition=condname), exist_ok=True
         )
         for seqid, profile in seqs_profiles.items():
             if profile is not None:
-                print(profile)
+                # print(profile)
                 profile.to_csv(
                     utils.aggregate_pattern.format(
                         path=output_path, condition=condname, seqid=seqid
                     ),
                     sep="\t",
-                    
                 )
+                profile["mean"] = profile["mean"].fillna(-999)
                 write_shape(output_path, condname, seqid, profile)
                 write_map(output_path, condname, seqid, profile)
-    #plot_all(output_path, profiles)
+    # plot_all(output_path, profiles)
 
 
 def write_shape(output_path, condition, seqid, profile):
     shprofile = profile.reset_index(level="sequence")[["mean"]]
-    idxmin = shprofile.index.min()
-    firstrows = pd.DataFrame({"mean": np.full(idxmin - 1, -10)}, index=range(1, idxmin))
-    firstrows.index.names = ["seqNum"]
-    shprofile = pd.concat([firstrows, shprofile])
     shprofile.to_csv(
         utils.shape_pattern.format(path=output_path, condition=condition, seqid=seqid),
         sep="\t",
@@ -253,17 +267,7 @@ def write_shape(output_path, condition, seqid, profile):
 
 def write_map(output_path, condition, seqid, profile):
     mapprofile = profile.reset_index(level="sequence")[["mean", "stdev", "sequence"]]
-    idxmin = mapprofile.index.min()
-    firstrows = pd.DataFrame(
-        {
-            "mean": np.full(idxmin - 1, -10),
-            "stdev": np.zeros(idxmin - 1),
-            "sequence": np.full(idxmin - 1, "N"),
-        },
-        index=range(1, idxmin),
-    )
-    firstrows.index.names = ["seqNum"]
-    mapprofile = pd.concat([firstrows, mapprofile])
+
     mapprofile.to_csv(
         utils.map_pattern.format(path=output_path, condition=condition, seqid=seqid),
         sep="\t",
