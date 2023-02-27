@@ -308,23 +308,22 @@ def main(
             args = (globpath, outputpath, seqid, conditions)
             normalize_through_conditions(*args)
             # pool.apply_async(normalize_through_conditions, args)
-    if mode == "conditions-reps":
+    elif mode == "conditions-reps":
         for seqid in tqdm(
             sequences, total=len(sequences), desc="Normalizing", position=0
         ):
 
             cond_by_reps = split_conds_by_rep(conditions)
-            for cbr in cond_by_reps:
+            for name, cbr in cond_by_reps.items():
                 args = (globpath, outputpath, seqid, cbr)
                 normalize_through_conditions(*args)
-
     elif mode == "all":
         args = (globpath, outputpath, sequences, conditions)
         normalize_through_all(*args)
         # pool.apply_async(normalize_through_conditions, args)
     else:
         raise Exception(
-            f"Invalid mode {mode} Your must choose between: all, conditions"
+            f"Invalid mode {mode} Your must choose between: all, conditions, conditions-reps"
         )
 
 
