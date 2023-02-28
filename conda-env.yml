@@ -1,0 +1,20 @@
+name: shapemap-tools
+channels:
+  - bioconda
+  - conda-forge
+  - sargueil-citcom
+dependencies:
+    - cutadapt
+    - python
+    - fire
+    - pandas
+    - numpy
+    - matplotlib
+    - seaborn
+    - jupyter
+    - scikit-bio
+    - parse
+    - scipy
+    - ruamel.yaml
+    - jupyter
+    - voila
