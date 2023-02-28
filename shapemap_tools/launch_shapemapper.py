@@ -8,7 +8,6 @@ from . import fasta
 import os
 from tqdm import tqdm
 
-shapemapper_path = "/data/fxlyonnet/shapemapper-2.1.5-DONOTUSE/shapemapper"
 
 YAML = yaml.YAML()
 
@@ -27,6 +26,7 @@ def run_shapemapper(
     log: str = "log.log",
     overwrite=True,
     extra_args: [str] = [],
+    shapemapper_path: str = "shapemapper2",
 ):
     cmd = [
         shapemapper_path,
@@ -99,6 +99,7 @@ def gen_splitted_ref(ref_path, output_path) -> dict:
 
     return splitted
 
+
 def get_config(config, path, default):
     cur_conf = config
     for p in path:
@@ -107,6 +108,7 @@ def get_config(config, path, default):
         else:
             return default
     return cur_conf
+
 
 def prepare_launch(config, samples):
     runs = {}
@@ -124,17 +126,19 @@ def prepare_launch(config, samples):
         seq_file = config["sequences"][sample["sequence"]]
         runs[title] = {}
         if os.path.splitext(seq_file)[-1] in [".tsv", ".csv"]:
-
             seq_filename = os.path.basename(seq_file).split(".")[0]
             fasta_path = os.path.join(
                 config["shapemapper_output"], "sequences", seq_filename + ".fasta"
             )
-            seq_conf = get_config(config,["sequence_config"],{})
-            fasta_from_tsv(seq_file, fasta_path,
+            seq_conf = get_config(config, ["sequence_config"], {})
+            fasta_from_tsv(
+                seq_file,
+                fasta_path,
                 name_col=get_config(seq_conf, "name_col", "name"),
                 seq_col=get_config(seq_conf, "seq_col", "sequence"),
                 prefix_cols=get_config(seq_conf, "prefix_cols", []),
-                suffix_cols=get_config(seq_conf, "suffix_cols", []))
+                suffix_cols=get_config(seq_conf, "suffix_cols", []),
+            )
 
             config["sequences"][sample["sequence"]] = fasta_path
             seq_file = fasta_path
@@ -149,7 +153,6 @@ def prepare_launch(config, samples):
                 for condtype in fastqs.keys():
                     for readtype in fastqs[condtype].keys():
                         for folder in config["data_folders"]:
-
                             cur_glob_path = fastq_input_splitted_pattern.format(
                                 sequence=seq,
                                 input_path=folder,
@@ -175,21 +178,20 @@ def prepare_launch(config, samples):
             for condtype in fastqs.keys():
                 for readtype in fastqs[condtype].keys():
                     for folder in config["data_folders"]:
-
                         cur_glob_path = fastq_input_pattern.format(
                             input_path=folder,
                             cond=sample[condtype],
                             read=readtype,
                         )
 
-                        #print(f"PATH: {cur_glob_path}")
+                        # print(f"PATH: {cur_glob_path}")
                         fqs = glob.glob(cur_glob_path)
-                        #print(fqs)
+                        # print(fqs)
                         fastqs[condtype][readtype].extend(fqs)
             runs[title] = {"all": fastqs}
-            splitted_refs[title] = {"all":seq_file}
-    #print(runs)
-    #print(splitted_refs)
+            splitted_refs[title] = {"all": seq_file}
+    # print(runs)
+    # print(splitted_refs)
     return runs, splitted_refs
 
 
@@ -208,33 +210,39 @@ def prepare_launch(config, samples):
 #    log: str = "log.log",
 #    overwrite=True,
 #    extra_args: [str] = [],
-def launch_shapemapper(config_path, samples_path, interactive=False):
+def launch_shapemapper(config_path, samples_path, interactive=False,
+                       shapemapper_path=None):
     samples = pd.read_csv(samples_path, sep="\t")
     samples = samples[samples["discard"] != "yes"]
     with open(config_path, "r") as config_file:
         config = YAML.load(config_file)
 
+    if "shapemapper_path" in config and shapemapper_path is None:
+        shapemapper_path = config["shapemapper_path"]
+
     runs, splitted_refs = prepare_launch(config, samples)
 
     check_all_valid = True
-    for (title, seqs) in runs.items():
-        #print(title)
-        #print(seqs)
+    for title, seqs in runs.items():
+        # print(title)
+        # print(seqs)
 
         for seq, fastqs in seqs.items():
-            #print(seq)
-            #print(fastqs)
+            # print(seq)
+            # print(fastqs)
             for condtype, strands in fastqs.items():
-                #print(condtype)
-                #print(strands)
+                # print(condtype)
+                # print(strands)
                 if len(strands["R1"]) != len(strands["R2"]):
-                    print(f"{title} - {seq} - {condtype} : len(R1) {len(R1)}!= len(R2) {len(R2)}")
+                    print(
+                        f"{title} - {seq} - {condtype} : len(R1) {len(strands['R1'])}!= len(R2) {len(strands['R2'])}"
+                    )
                     check_all_valid = False
 
                 for strandname, strand in strands.items():
-                    #print(strandname)
-                    #print(strand)
-                    #print(len(strand))
+                    # print(strandname)
+                    # print(strand)
+                    # print(len(strand))
                     if len(strand) == 0:
                         print(
                             f"{title} - {seq} - {condtype} - {strandname} : no input files"
@@ -265,6 +273,7 @@ def launch_shapemapper(config_path, samples_path, interactive=False):
                     title + f"_{seq}.log",
                 ),
                 input_fastqs=fastqs,
+                shapemapper_path=shapemapper_path
             )
 
 
