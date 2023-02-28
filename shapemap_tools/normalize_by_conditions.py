@@ -123,7 +123,7 @@ def runRenderFigures(
     return res.returncode
 
 
-def normalize_through_all(path, outputpath, sequences, conditions):
+def normalize_through_all(path, outputpath, sequences, conditions, normalize=True, render_figure=True):
     tonorm = [
         utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         for condition in conditions
@@ -141,8 +141,8 @@ def normalize_through_all(path, outputpath, sequences, conditions):
             utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         )
     ]
-
-    runNormalizeShapemapper(tonorm, normout)
+    if normalize:
+        runNormalizeShapemapper(tonorm, normout)
 
     for cond in tqdm(
         conditions,
@@ -153,34 +153,36 @@ def normalize_through_all(path, outputpath, sequences, conditions):
     ):
         for seqid in sequences:
             print(f"Start {cond} ({seqid})")
-            runTabToShape(
-                utils.profile_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                map_file=utils.map_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                shape_file=utils.shape_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-            )
-            runRenderFigures(
-                utils.profile_pattern.format(
-                    path=outputpath,
-                    condition=cond,
-                    seqid=seqid,
-                ),
-                title=utils.title_pattern.format(condition=cond, seqid=seqid),
-                plot_file=utils.plot_profiles_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                histo_file=utils.plot_histo_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-            )
+            if normalize:
+                runTabToShape(
+                    utils.profile_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                    map_file=utils.map_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                    shape_file=utils.shape_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                )
+            if render_figure:
+                runRenderFigures(
+                    utils.profile_pattern.format(
+                        path=outputpath,
+                        condition=cond,
+                        seqid=seqid,
+                    ),
+                    title=utils.title_pattern.format(condition=cond, seqid=seqid),
+                    plot_file=utils.plot_profiles_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                    histo_file=utils.plot_histo_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                )
 
 
-def normalize_through_conditions(path, outputpath, seqid, conditions):
+def normalize_through_conditions(path, outputpath, seqid, conditions, normalize=True, render_figure=True):
 
     tonorm = [
         utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
@@ -199,7 +201,8 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
     ]
 
     print(f"Start {seqid}")
-    retcode = runNormalizeShapemapper(tonorm, normout)
+    if normalize:
+        retcode = runNormalizeShapemapper(tonorm, normout)
     retcode = 0
     if retcode == 0:
         for cond in tqdm(
@@ -209,38 +212,41 @@ def normalize_through_conditions(path, outputpath, seqid, conditions):
             position=1,
             leave=False,
         ):
-            tts_retcode = runTabToShape(
-                utils.profile_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                map_file=utils.map_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-                shape_file=utils.shape_pattern.format(
-                    path=outputpath, condition=cond, seqid=seqid
-                ),
-            )
-            tts_retcode = 0
-            if tts_retcode == 0:
-                rrf_retcode = runRenderFigures(
+
+            if normalize:
+                tts_retcode = runTabToShape(
                     utils.profile_pattern.format(
-                        path=outputpath,
-                        condition=cond,
-                        seqid=seqid,
-                    ),
-                    title=utils.title_pattern.format(condition=cond, seqid=seqid),
-                    plot_file=utils.plot_profiles_pattern.format(
                         path=outputpath, condition=cond, seqid=seqid
                     ),
-                    histo_file=utils.plot_histo_pattern.format(
+                    map_file=utils.map_pattern.format(
+                        path=outputpath, condition=cond, seqid=seqid
+                    ),
+                    shape_file=utils.shape_pattern.format(
                         path=outputpath, condition=cond, seqid=seqid
                     ),
                 )
-                if rrf_retcode != 0:
-                    print(f"Rendering figure failed {seqid} - {cond}")
+            tts_retcode = 0
+            if render_figure:
+                if tts_retcode == 0:
+                    rrf_retcode = runRenderFigures(
+                        utils.profile_pattern.format(
+                            path=outputpath,
+                            condition=cond,
+                            seqid=seqid,
+                        ),
+                        title=utils.title_pattern.format(condition=cond, seqid=seqid),
+                        plot_file=utils.plot_profiles_pattern.format(
+                            path=outputpath, condition=cond, seqid=seqid
+                        ),
+                        histo_file=utils.plot_histo_pattern.format(
+                            path=outputpath, condition=cond, seqid=seqid
+                        ),
+                    )
+                    if rrf_retcode != 0:
+                        print(f"Rendering figure failed {seqid} - {cond}")
 
-            else:
-                print(f"Shape conversion error for sequence {seqid} - {cond}")
+                else:
+                    print(f"Shape conversion error for sequence {seqid} - {cond}")
     else:
         print(f"Normalization error for sequence {seqid}")
 
@@ -264,6 +270,8 @@ def main(
     shapemapper_path="shapemapper2",
     condition_prefix="",
     log="normalize_by_cond.log",
+    normalize=True,
+    render_figure=True
 ):
     """main
 
@@ -305,7 +313,7 @@ def main(
         for seqid in tqdm(
             sequences, total=len(sequences), desc="Normalizing", position=0
         ):
-            args = (globpath, outputpath, seqid, conditions)
+            args = (globpath, outputpath, seqid, conditions, normalize, render_figure)
             normalize_through_conditions(*args)
             # pool.apply_async(normalize_through_conditions, args)
     elif mode == "conditions-reps":
@@ -315,10 +323,10 @@ def main(
 
             cond_by_reps = split_conds_by_rep(conditions)
             for name, cbr in cond_by_reps.items():
-                args = (globpath, outputpath, seqid, cbr)
+                args = (globpath, outputpath, seqid, cbr, normalize, render_figure)
                 normalize_through_conditions(*args)
     elif mode == "all":
-        args = (globpath, outputpath, sequences, conditions)
+        args = (globpath, outputpath, sequences, conditions, normalize, render_figure)
         normalize_through_all(*args)
         # pool.apply_async(normalize_through_conditions, args)
     else:
