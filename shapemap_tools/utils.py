@@ -90,14 +90,16 @@ def get_sequences(path, conditions):
                 for path in glob.glob(pattern)
             }
         )
-    return sequences
+    return sorted(tuple(sequences))
 
 
 def conditions_from_path(project_path, condition_prefix):
-    return [
-        os.path.basename(path)
-        for path in glob.glob(f"{project_path}/{condition_prefix}*")
-    ]
+    return sorted(
+        [
+            os.path.basename(path)
+            for path in glob.glob(f"{project_path}/{condition_prefix}*")
+        ]
+    )
 
 
 def comparisons_from_path(
@@ -120,7 +122,7 @@ class Config:
         self.samples = pd.read_csv(sample_path, sep="\t")
         self.samples = self.samples[self.samples["discard"] != "yes"]
         self.sequences_id = set()
-        #print(self.config["sequences"])
+        # print(self.config["sequences"])
         for seqs_id, seqs_path in self.config["sequences"].items():
             df = pd.read_csv(seqs_path, sep="\t")
             self.sequences_id = self.sequences_id.union(df["name"])
