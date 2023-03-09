@@ -7,6 +7,7 @@ import copy
 from . import fasta
 import os
 from tqdm import tqdm
+import utils
 
 
 YAML = yaml.YAML()
@@ -58,8 +59,8 @@ def run_shapemapper(
     # print(" ".join(cmd))
     try:
         sp.run(cmd, capture_output=True, text=True)
-    except:
-        print(f"Error launching shapemapper for {name}")
+    except Exception as e:
+        print(f"Error launching shapemapper for {name} {e}")
         print(" ".join(cmd))
 
 
@@ -210,8 +211,10 @@ def prepare_launch(config, samples):
 #    log: str = "log.log",
 #    overwrite=True,
 #    extra_args: [str] = [],
-def launch_shapemapper(config_path, samples_path, interactive=False,
-                       shapemapper_path=None):
+def launch_shapemapper(
+    config_path, samples_path, interactive=False, shapemapper_path=None,
+    dnerase=False
+):
     samples = pd.read_csv(samples_path, sep="\t")
     samples = samples[samples["discard"] != "yes"]
     with open(config_path, "r") as config_file:
@@ -263,18 +266,23 @@ def launch_shapemapper(config_path, samples_path, interactive=False,
         for seq, fastqs in tqdm(
             seqs.items(), total=len(seqs), desc=title, position=1, leave=False
         ):
-            run_shapemapper(
-                reference=splitted_refs[title][seq],
-                output_dir=os.path.join(config["shapemapper_output"], title),
-                name=title,
-                log=os.path.join(
-                    config["shapemapper_output"],
-                    title,
-                    title + f"_{seq}.log",
-                ),
-                input_fastqs=fastqs,
-                shapemapper_path=shapemapper_path
-            )
+            if not dnerase or not os.path.exists(
+                utils.profile_pattern.format(
+                    path=config["shapemapper_output"], seqid=seq, condition=title
+                )
+            ):
+                run_shapemapper(
+                    reference=splitted_refs[title][seq],
+                    output_dir=os.path.join(config["shapemapper_output"], title),
+                    name=title,
+                    log=os.path.join(
+                        config["shapemapper_output"],
+                        title,
+                        title + f"_{seq}.log",
+                    ),
+                    input_fastqs=fastqs,
+                    shapemapper_path=shapemapper_path,
+                )
 
 
 def main():
