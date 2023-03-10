@@ -164,7 +164,8 @@ def aggregate_replicates(
         config = utils.PathConfig(path_config_path)
     else:
         base_config = utils.Config(config_path)
-        config = base_config.path_config()
+        ## FIXME find info about replicate in config file
+        config = base_config.path_config(input_path=output_path)
 
     sequences = config.sequences
     assert len(sequences) > 0

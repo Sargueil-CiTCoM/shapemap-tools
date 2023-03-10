@@ -139,9 +139,12 @@ class Config:
         res = self.samples[ext_params].drop_duplicates()
         return res
 
-    def path_config(self, reps=["rep0", "rep1", "rep2", "rep3"]):
+    def path_config(self, reps=["rep0", "rep1", "rep2", "rep3"], input_path=None):
         pc = PathConfig()
-        pc.paths = {idx: self.config["shapemapper_output_norm"] for idx in reps}
+        input_path = (
+            self.config["shapemapper_output_norm"] if input_path is None else input_path
+        )
+        pc.paths = {idx: input_path for idx in reps}
 
         pc.conditions = {}
         for rid, condition in self.conditions().iterrows():
