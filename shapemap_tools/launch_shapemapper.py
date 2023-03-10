@@ -4,10 +4,9 @@ import pandas as pd
 import ruamel.yaml as yaml
 import glob
 import copy
-from . import fasta
+from . import fasta,utils
 import os
 from tqdm import tqdm
-import utils
 
 
 YAML = yaml.YAML()
@@ -212,8 +211,7 @@ def prepare_launch(config, samples):
 #    overwrite=True,
 #    extra_args: [str] = [],
 def launch_shapemapper(
-    config_path, samples_path, interactive=False, shapemapper_path=None,
-    dnerase=False
+    config_path, samples_path, interactive=False, shapemapper_path=None, dnerase=False
 ):
     samples = pd.read_csv(samples_path, sep="\t")
     samples = samples[samples["discard"] != "yes"]
