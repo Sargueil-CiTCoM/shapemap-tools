@@ -3,7 +3,7 @@
 
 # In[1]:
 
-import glob
+# import glob
 import pandas as pd
 import numpy as np
 import os
@@ -200,7 +200,7 @@ def aggregate_replicates(
                     repsdf[rep_id] = curdf
                     # profiles[condname][seqid][rep_id] = curdf["reactivity"]
 
-                except FileNotFoundError as fnfe:
+                except FileNotFoundError:  # as fnfe:
                     # print(lol)
                     # print(fnfe)
                     pass

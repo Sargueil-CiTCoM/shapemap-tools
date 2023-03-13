@@ -4,10 +4,13 @@ import os
 import fire
 import glob
 import parse
+import tempfile
 from . import fasta
 from tqdm import tqdm
 varna_path = os.path.join (os.path.dirname(__file__),"VARNAcmd.jar")
 
+def run_varna_thread_wrapper(args):
+    run_varna_thread(**args)
 
 def run_varna_thread(config, condition, rna, sequence, shape, outputdir):
     dbn = os.path.join(outputdir, condition, f"{condition}_{rna}.dbn")
@@ -56,9 +59,12 @@ def runVARNA(struct_file, shape_file, title, output_file, resolution=1.0):
     except Exception as e:
         raise e
 
+def run_thread_wrapper(args):
+    run_thread(**args)
 
 def run_thread(config, condition, rna, sequence, shape, outputdir):
     dbn = os.path.join(outputdir, condition, f"{condition}_{rna}.dbn")
+
     run_ipanemap(
         config,
         condition,
@@ -69,7 +75,9 @@ def run_thread(config, condition, rna, sequence, shape, outputdir):
     )
 
 
-def run_ipanemap(config, condition, sequence, shape, dbn, tmp_outputdir):
+def run_ipanemap(config, condition, sequence, shape, dbn, outputdir):
+
+    temp = tempfile.mkdtemp(prefix="ipanemap")
     cmd = [
         "ipanemap",
         "--config",
@@ -83,7 +91,9 @@ def run_ipanemap(config, condition, sequence, shape, dbn, tmp_outputdir):
         "--conditions",
         condition,
         "--out-dir",
-        tmp_outputdir,
+        outputdir,
+        "--tmp-dir",
+        temp
     ]
     #print(" ".join(cmd))
     #print(f"Starting {condition}")
@@ -99,6 +109,7 @@ def gen_structures(
     output_dir,
     sequence,
     configfile=None,
+    nthreads=1
 ):
     if configfile is None:
         configfile = os.path.join(
@@ -122,7 +133,8 @@ def gen_structures(
 
     for cond in conditions:
         os.makedirs(f"{output_dir}/{cond}/tmp", exist_ok=True)
-    # pool = mp.Pool(24)
+ 
+    tasks = [] 
     for file in tqdm(shape_files_path, desc="gen structures",
                      total=len(shape_files_path), ):
         base_name = os.path.basename(parse.parse("{name}.shape", file).named["name"])
@@ -136,18 +148,37 @@ def gen_structures(
             "shape": file,
             "outputdir": f"{output_dir}",
         }
-        # run_thread(
-        #    **kwargs,
-        # )
-        run_thread(**kwargs)
-        run_varna_thread(**kwargs)
-        # pool.apply_async(
-        #    run_thread,
-        #    kwds=kwargs,
-        # )
-    # pool.close()
-    # pool.join()
+        if nthreads <= 1:
+            run_thread(**kwargs)
+        else:
+            tasks += [kwargs]
+        
+    if nthreads > 1:
+        with mp.Pool(nthreads) as p:
+            list(tqdm(p.imap_unordered(run_thread_wrapper, tasks), total=len(tasks)))  
 
+    tasks = []
+    for file in tqdm(shape_files_path, desc="gen structures",
+                     total=len(shape_files_path), ):
+        base_name = os.path.basename(parse.parse("{name}.shape", file).named["name"])
+        condname = os.path.basename(os.path.dirname(file))
+        rna_name = base_name.split("_")[-1]
+        kwargs = {
+            "config": configfile,
+            "condition": condname,
+            "rna": rna_name,
+            "sequence": f"{output_dir}/sequences/{rna_name}.fasta",
+            "shape": file,
+            "outputdir": f"{output_dir}",
+        }
+        if nthreads <= 1:
+            run_varna_thread(**kwargs)
+        else:
+            tasks += [kwargs]
+
+    if nthreads > 1:
+        with mp.Pool(nthreads) as p:
+            list(tqdm(p.imap_unordered(run_varna_thread_wrapper, tasks), total=len(tasks)))  
 
 def main():
     fire.Fire(gen_structures)

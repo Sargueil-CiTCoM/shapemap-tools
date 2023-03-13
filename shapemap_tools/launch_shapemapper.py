@@ -4,10 +4,11 @@ import pandas as pd
 import ruamel.yaml as yaml
 import glob
 import copy
-from . import fasta,utils
+from . import fasta, utils
 import os
 from tqdm import tqdm
-
+import string
+import random
 
 YAML = yaml.YAML()
 
@@ -27,9 +28,10 @@ def run_shapemapper(
     overwrite=True,
     extra_args: [str] = [],
     shapemapper_path: str = "shapemapper2",
+    seq="",
 ):
-    cmd = [
-        shapemapper_path,
+    random_tmp = "".join(random.choice(string.ascii_lowercase) for i in range(8))
+    args = [
         "--name",
         name,
         "--nproc",
@@ -39,22 +41,27 @@ def run_shapemapper(
         # "--amplicon",
         "--target",
         reference,
-        "--out",
-        output_dir,
         "--log",
         log,
+        "--temp",
+        f"temp/{name}_{seq}_{random_tmp}",
+        "--out",
+        output_dir,
+        "--verbose"
     ]
     if indiv_norm:
-        cmd.append("--indiv-norm")
+        args.append("--indiv-norm")
     if overwrite:
-        cmd.append("--overwrite")
+        args.append("--overwrite")
 
+    form_inputs = []
     for condtype in input_fastqs.keys():
-        cmd.append(f"--{condtype}")
+        form_inputs.append(f"--{condtype}")
         for readtype, fastqs in input_fastqs[condtype].items():
-            cmd.append(f"--{readtype}")
-            cmd.extend(fastqs)
+            form_inputs.append(f"--{readtype}")
+            form_inputs.extend(fastqs)
 
+    cmd = [shapemapper_path] + form_inputs + args
     # print(" ".join(cmd))
     try:
         sp.run(cmd, capture_output=True, text=True)
@@ -110,7 +117,7 @@ def get_config(config, path, default):
     return cur_conf
 
 
-def prepare_launch(config, samples):
+def prepare_launch(config, samples, dnerase=False):
     runs = {}
     splitted_refs = {}
     afastq = {
@@ -149,30 +156,40 @@ def prepare_launch(config, samples):
             )
             splitted_refs[title] = cur_splitted_refs
             for seq in cur_splitted_refs.keys():
-                fastqs = copy.deepcopy(afastq)
-                for condtype in fastqs.keys():
-                    for readtype in fastqs[condtype].keys():
-                        for folder in config["data_folders"]:
-                            cur_glob_path = fastq_input_splitted_pattern.format(
-                                sequence=seq,
-                                input_path=folder,
-                                cond=sample[condtype],
-                                read=readtype,
-                            )
-                            cur_glob_path_rev = fastq_input_splitted_pattern.format(
-                                sequence=seq + "_rev",
-                                input_path=folder,
-                                cond=sample[condtype],
-                                read=readtype,
-                            )
+                if not dnerase or (
+                    dnerase
+                    and not os.path.exists(
+                        utils.profile_pattern.format(
+                            path=config["shapemapper_output"],
+                            seqid=seq,
+                            condition=title,
+                        )
+                    )
+                ):
+                    fastqs = copy.deepcopy(afastq)
+                    for condtype in fastqs.keys():
+                        for readtype in fastqs[condtype].keys():
+                            for folder in config["data_folders"]:
+                                cur_glob_path = fastq_input_splitted_pattern.format(
+                                    sequence=seq,
+                                    input_path=folder,
+                                    cond=sample[condtype],
+                                    read=readtype,
+                                )
+                                cur_glob_path_rev = fastq_input_splitted_pattern.format(
+                                    sequence=seq + "_rev",
+                                    input_path=folder,
+                                    cond=sample[condtype],
+                                    read=readtype,
+                                )
 
-                            # print(f"PATH: {cur_glob_path}")
-                            fqs = glob.glob(cur_glob_path) + glob.glob(
-                                cur_glob_path_rev
-                            )
-                            fastqs[condtype][readtype].extend(fqs)
+                                # print(f"PATH: {cur_glob_path}")
+                                fqs = glob.glob(cur_glob_path) + glob.glob(
+                                    cur_glob_path_rev
+                                )
+                                fastqs[condtype][readtype].extend(fqs)
 
-                runs[title][seq] = fastqs
+                    runs[title][seq] = fastqs
         else:
             fastqs = copy.deepcopy(afastq)
             for condtype in fastqs.keys():
@@ -221,7 +238,8 @@ def launch_shapemapper(
     if "shapemapper_path" in config and shapemapper_path is None:
         shapemapper_path = config["shapemapper_path"]
 
-    runs, splitted_refs = prepare_launch(config, samples)
+    assert shapemapper_path is not None
+    runs, splitted_refs = prepare_launch(config, samples, dnerase=dnerase)
 
     check_all_valid = True
     for title, seqs in runs.items():
@@ -264,9 +282,12 @@ def launch_shapemapper(
         for seq, fastqs in tqdm(
             seqs.items(), total=len(seqs), desc=title, position=1, leave=False
         ):
-            if not dnerase or not os.path.exists(
-                utils.profile_pattern.format(
-                    path=config["shapemapper_output"], seqid=seq, condition=title
+            if not dnerase or (
+                dnerase
+                and not os.path.exists(
+                    utils.profile_pattern.format(
+                        path=config["shapemapper_output"], seqid=seq, condition=title
+                    )
                 )
             ):
                 run_shapemapper(
@@ -280,6 +301,7 @@ def launch_shapemapper(
                     ),
                     input_fastqs=fastqs,
                     shapemapper_path=shapemapper_path,
+                    seq=seq,
                 )
 
 
