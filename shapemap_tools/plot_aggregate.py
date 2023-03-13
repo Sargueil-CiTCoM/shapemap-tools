@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 import copy
+import multiprocessing as mp
 from matplotlib import cm
 import matplotlib.pyplot as plt
 import gc
@@ -18,6 +19,10 @@ from tqdm import tqdm
 import warnings
 
 # pd.set_option("display.max_rows", None)  # or 1000
+
+
+def plot_aggregate_wrapper(args):
+    plot_aggregate(**args)
 
 
 def plot_aggregate(
@@ -159,11 +164,12 @@ def plot_aggregate(
         open(output, "a").close()
 
 
-def plot_aggregates(path: str, dnerase:bool= False):
+def plot_aggregates(path: str, dnerase: bool = False, nthreads=1):
     files = glob.glob(f"{path}/**/*_aggregated.tsv") + glob.glob(
         f"{path}/*_aggregated.tsv"
     )
 
+    tasks = []
     for file in tqdm(files, total=len(files)):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -176,16 +182,29 @@ def plot_aggregates(path: str, dnerase:bool= False):
                     or not os.path.exists(out)
                     or not os.path.exists(fullout)
                 ):
-                    plot_aggregate(
-                        profile,
-                        output=out,
-                        fulloutput=fullout,
-                        title=f"{os.path.splitext(os.path.basename(file))[0]} Reactivity",
-                    )
+                    if nthreads <= 1:
+                        plot_aggregate(
+                            profile,
+                            output=out,
+                            fulloutput=fullout,
+                            title=f"{os.path.splitext(os.path.basename(file))[0]} Reactivity",
+                        )
+                    else:
+                        tasks += [
+                            {
+                                "aggregated": profile,
+                                "output": out,
+                                "fulloutput": fullout,
+                                "title": f"{os.path.splitext(os.path.basename(file))[0]} Reactivity",
+                            }
+                        ]
             except Exception as e:
                 print(f"Error Plotting {file}")
                 print(e)
-            gc.collect()
+            # gc.collect()
+    if nthreads > 1:
+        with mp.Pool(nthreads) as pool:
+            tqdm(pool.imap_unordered(plot_aggregate_wrapper, tasks), total=len(tasks))
 
 
 def main():

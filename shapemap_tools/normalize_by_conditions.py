@@ -6,8 +6,9 @@
 
 import os
 import fire
-import subprocess as sp
 import glob
+import subprocess as sp
+import multiprocessing as mp
 from . import utils
 from tqdm import tqdm
 
@@ -123,7 +124,13 @@ def runRenderFigures(
     return res.returncode
 
 
-def normalize_through_all(path, outputpath, sequences, conditions, normalize=True, render_figure=True):
+def normalized_through_all_wrapper(args):
+    normalize_through_all(*args)
+
+
+def normalize_through_all(
+    path, outputpath, sequences, conditions, normalize=True, render_figure=True
+):
     tonorm = [
         utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         for condition in conditions
@@ -182,8 +189,13 @@ def normalize_through_all(path, outputpath, sequences, conditions, normalize=Tru
                 )
 
 
-def normalize_through_conditions(path, outputpath, seqid, conditions, normalize=True, render_figure=True):
+def normalized_through_conditions_wrapper(args):
+    normalize_through_conditions(*args)
 
+
+def normalize_through_conditions(
+    path, outputpath, seqid, conditions, normalize=True, render_figure=True
+):
     tonorm = [
         utils.profile_pattern.format(path=path, condition=condition, seqid=seqid)
         for condition in conditions
@@ -212,7 +224,6 @@ def normalize_through_conditions(path, outputpath, seqid, conditions, normalize=
             position=1,
             leave=False,
         ):
-
             if normalize:
                 tts_retcode = runTabToShape(
                     utils.profile_pattern.format(
@@ -271,7 +282,8 @@ def main(
     condition_prefix="",
     log="normalize_by_cond.log",
     normalize=True,
-    render_figure=True
+    render_figure=True,
+    nthreads=1,
 ):
     """main
 
@@ -308,27 +320,42 @@ def main(
     ):
         os.makedirs(os.path.join(outputpath, cond), exist_ok=True)
     sequences = utils.get_sequences(globpath, conditions)
-
+    tasks = []
     if mode == "conditions":
         for seqid in tqdm(
             sequences, total=len(sequences), desc="Normalizing", position=0
         ):
             args = (globpath, outputpath, seqid, conditions, normalize, render_figure)
-            normalize_through_conditions(*args)
-            # pool.apply_async(normalize_through_conditions, args)
+            if nthreads <= 1:
+                normalize_through_conditions(*args)
+            else:
+                tasks += [args]
+        if nthreads > 1:
+            with mp.Pool(nthreads) as pool:
+                tqdm(
+                    pool.imap_unordered(normalize_through_conditions, tasks),
+                    total=len(tasks),
+                )
     elif mode == "conditions-reps":
         for seqid in tqdm(
             sequences, total=len(sequences), desc="Normalizing", position=0
         ):
-
             cond_by_reps = split_conds_by_rep(conditions)
             for name, cbr in cond_by_reps.items():
                 args = (globpath, outputpath, seqid, cbr, normalize, render_figure)
-                normalize_through_conditions(*args)
+                if nthreads <= 1:
+                    normalize_through_conditions(*args)
+                else:
+                    tasks += [args]
+        if nthreads > 1:
+            with mp.Pool(nthreads) as pool:
+                tqdm(
+                    pool.imap_unordered(normalize_through_conditions, tasks),
+                    total=len(tasks),
+                )
     elif mode == "all":
         args = (globpath, outputpath, sequences, conditions, normalize, render_figure)
         normalize_through_all(*args)
-        # pool.apply_async(normalize_through_conditions, args)
     else:
         raise Exception(
             f"Invalid mode {mode} Your must choose between: all, conditions, conditions-reps"

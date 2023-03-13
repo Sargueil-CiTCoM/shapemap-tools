@@ -7,10 +7,6 @@
 import pandas as pd
 import numpy as np
 import os
-import copy
-from matplotlib import cm
-import matplotlib.pyplot as plt
-import gc
 import fire
 from . import utils
 from tqdm import tqdm
@@ -18,140 +14,6 @@ from tqdm import tqdm
 # pd.set_option("display.max_rows", None)  # or 1000
 
 import warnings
-
-
-def plot_aggregate(
-    aggregated: pd.DataFrame,
-    fulloutput="fig.full.svg",
-    output="fig.svg",
-    title: str = "Aggregated reactivity",
-    format="svg",
-):
-    aggregated = copy.deepcopy(aggregated)
-    aggregated["xlabel"] = (
-        aggregated.index.get_level_values("seqNum").astype(str)
-        + "\n"
-        + aggregated.index.get_level_values("sequence").astype(str)
-    )
-    replicates = aggregated.loc[
-        :,
-        aggregated.columns.drop(["mean", "stdev", "sem", "mad"]),
-    ].replace(-10, np.NaN)
-
-    aggregated = aggregated.sort_index()
-    meanstdev = aggregated.loc[:, ["xlabel", "mean", "stdev"]].replace(-10, np.NaN)
-
-    reactivities_cols = [col for col in aggregated.columns if col[1] == "reactivity"]
-    reactivities_cols += [("xlabel", "")]
-
-    ax = replicates[reactivities_cols].plot(
-        x="xlabel",
-        kind="bar",
-        width=0.7,
-        stacked=False,
-        figsize=(len(aggregated) / 3.5, 4),
-        align="center",
-        xticks=np.arange(0, len(aggregated) + 1, 1),
-    )
-    ax = meanstdev[["mean", "xlabel"]].plot(
-        x="xlabel",
-        y="mean",
-        drawstyle="steps-mid",
-        ax=ax,
-        colormap=cm.cubehelix,
-        linewidth=0.5,
-    )
-    ax.set_xlabel("Position")
-    ax.set_ylabel("Reactivity")
-    # ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-    plt.margins(0)
-    plt.title(title, loc="left")
-    plt.legend(loc="upper left")
-    ax.errorbar(
-        meanstdev.index.get_level_values("seqNum") - 1,
-        meanstdev["mean"],
-        yerr=meanstdev["stdev"],
-        fmt="",
-        color="k",
-        ls="none",
-        capsize=4,
-        linewidth=0.5,
-    )
-    try:
-        plt.tight_layout()
-        # plt.show()
-        plt.savefig(fulloutput, format=format)
-    except ValueError as e:
-        print(f"Unable to save fullplot: {e}")
-        open(fulloutput, "a").close()
-
-    fig, ax = plt.subplots(
-        nrows=1, ncols=1, sharex=True, figsize=(len(aggregated) / 4, 4)
-    )
-
-    aggregated["color"] = utils.ReactivityThreshold.COLOR_NONE
-    aggregated.loc[
-        (aggregated["mean"] > utils.ReactivityThreshold.HIGH), "color"
-    ] = utils.ReactivityThreshold.COLOR_HIGH
-    aggregated.loc[
-        (
-            (aggregated["mean"] <= utils.ReactivityThreshold.HIGH)
-            & (aggregated["mean"] > utils.ReactivityThreshold.MEDIUM)
-        ),
-        "color",
-    ] = utils.ReactivityThreshold.COLOR_MEDIUM
-    aggregated.loc[
-        (
-            (aggregated["mean"] <= utils.ReactivityThreshold.MEDIUM)
-            & (aggregated["mean"] > utils.ReactivityThreshold.LOW)
-        ),
-        "color",
-    ] = utils.ReactivityThreshold.COLOR_LOW
-    aggregated.loc[
-        (aggregated["mean"] < utils.ReactivityThreshold.INVALID), "color"
-    ] = utils.ReactivityThreshold.COLOR_INVALID
-
-    aggregated.loc[(aggregated["mean"] == -10), "stdev"] = np.NaN
-    aggregated.loc[(aggregated["mean"] == -10), "mean"] = np.NaN
-    aggregated["xlabel_rot"] = (
-        aggregated.index.get_level_values("seqNum").astype(str)
-        + " - "
-        + aggregated.index.get_level_values("sequence").astype(str)
-    )
-
-    aggregated.plot(
-        ax=ax,
-        # x="xlabel_rot",
-        rot=70,
-        y="mean",
-        kind="bar",
-        width=1,
-        color=aggregated["color"],
-        yerr="stdev",
-        stacked=False,
-        capsize=3,
-    )
-    ax = meanstdev[["mean", "xlabel"]].plot(
-        x="xlabel",
-        y="mean",
-        drawstyle="steps-mid",
-        ax=ax,
-        colormap=cm.cubehelix,
-        linewidth=0.5,
-    )
-
-    ax.set_xlabel("Position")
-    ax.set_ylabel("Reactivity")
-    plt.margins(0)
-    plt.title(title, loc="left")
-    plt.legend(loc="upper left")
-    try:
-        plt.tight_layout()
-        # plt.show()
-        plt.savefig(output, format=format)
-    except ValueError as e:
-        print(f"Unable to save plot: {e}")
-        open(output, "a").close()
 
 
 def aggregate_replicates(
@@ -164,7 +26,7 @@ def aggregate_replicates(
         config = utils.PathConfig(path_config_path)
     else:
         base_config = utils.Config(config_path)
-        ## FIXME find info about replicate in config file
+        # # FIXME find info about replicate in config file
         config = base_config.path_config(input_path=output_path)
 
     sequences = config.sequences
@@ -276,35 +138,6 @@ def write_map(output_path, condition, seqid, profile):
         header=False,
     )
     return mapprofile
-
-
-def plot_all(output_path, profiles):
-    for cond, seqs_profiles in profiles.items():
-        print(f"Plotting {cond}")
-        for seqid, curdf in seqs_profiles.items():
-            print(f"Plotting {seqid}")
-            if curdf is not None:
-                plot_aggregate(
-                    curdf,
-                    fulloutput=utils.plot_full_pattern.format(
-                        path=output_path, condition=cond, seqid=seqid
-                    ),
-                    output=utils.plot_pattern.format(
-                        path=output_path, condition=cond, seqid=seqid
-                    ),
-                    title=f"{cond} - {seqid} Reactivity",
-                )
-                gc.collect()
-            # curdf.to_csv(f"{cond}/{cond}_{aptaid}_aggregated.tsv",sep="\t")
-            # curdf = curdf.reset_index(drop=False)
-            # curdf["mean"] = curdf["mean"].fillna(-999)
-            # curdf["stdev"] = curdf["stdev"].fillna(0)
-            # curdf[["seqNum", "mean", "stdev", "sequence"]]
-            # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.map",sep="\t",
-            # index=False, header=None)
-            # curdf[["seqNum", "mean"]]
-            # .to_csv(f"{cond}/{cond}_{aptaid}_aggregated.shape",sep="\t",
-            # header=None,index=False)
 
 
 def main():
