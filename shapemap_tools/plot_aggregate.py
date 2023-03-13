@@ -201,7 +201,7 @@ def plot_aggregates(path: str, dnerase: bool = False, nthreads=1):
             except Exception as e:
                 print(f"Error Plotting {file}")
                 print(e)
-            # gc.collect()
+            gc.collect()
     if nthreads > 1:
         with mp.Pool(nthreads) as pool:
             tqdm(pool.imap_unordered(plot_aggregate_wrapper, tasks), total=len(tasks))

@@ -7,10 +7,13 @@ import parse
 import tempfile
 from . import fasta
 from tqdm import tqdm
-varna_path = os.path.join (os.path.dirname(__file__),"VARNAcmd.jar")
+
+varna_path = os.path.join(os.path.dirname(__file__), "VARNAcmd.jar")
+
 
 def run_varna_thread_wrapper(args):
     run_varna_thread(**args)
+
 
 def run_varna_thread(config, condition, rna, sequence, shape, outputdir):
     dbn = os.path.join(outputdir, condition, f"{condition}_{rna}.dbn")
@@ -59,8 +62,10 @@ def runVARNA(struct_file, shape_file, title, output_file, resolution=1.0):
     except Exception as e:
         raise e
 
+
 def run_thread_wrapper(args):
     run_thread(**args)
+
 
 def run_thread(config, condition, rna, sequence, shape, outputdir):
     dbn = os.path.join(outputdir, condition, f"{condition}_{rna}.dbn")
@@ -76,7 +81,6 @@ def run_thread(config, condition, rna, sequence, shape, outputdir):
 
 
 def run_ipanemap(config, condition, sequence, shape, dbn, outputdir):
-
     temp = tempfile.mkdtemp(prefix="ipanemap")
     cmd = [
         "ipanemap",
@@ -93,24 +97,18 @@ def run_ipanemap(config, condition, sequence, shape, dbn, outputdir):
         "--out-dir",
         outputdir,
         "--tmp-dir",
-        temp
+        temp,
     ]
-    #print(" ".join(cmd))
-    #print(f"Starting {condition}")
+    # print(" ".join(cmd))
+    # print(f"Starting {condition}")
     try:
         return sp.run(cmd, capture_output=True, text=True).returncode
     except Exception as e:
         raise e
-    #print(f"End {condition}")
+    # print(f"End {condition}")
 
 
-def gen_structures(
-    input_dir,
-    output_dir,
-    sequence,
-    configfile=None,
-    nthreads=1
-):
+def gen_structures(input_dir, output_dir, sequence, configfile=None, nthreads=1):
     if configfile is None:
         configfile = os.path.join(
             os.path.dirname(__file__), "template", "ipanemap-config.yaml"
@@ -133,10 +131,13 @@ def gen_structures(
 
     for cond in conditions:
         os.makedirs(f"{output_dir}/{cond}/tmp", exist_ok=True)
- 
-    tasks = [] 
-    for file in tqdm(shape_files_path, desc="gen structures",
-                     total=len(shape_files_path), ):
+
+    tasks = []
+    for file in tqdm(
+        shape_files_path,
+        desc="gen structures",
+        total=len(shape_files_path),
+    ):
         base_name = os.path.basename(parse.parse("{name}.shape", file).named["name"])
         condname = os.path.basename(os.path.dirname(file))
         rna_name = base_name.split("_")[-1]
@@ -152,14 +153,17 @@ def gen_structures(
             run_thread(**kwargs)
         else:
             tasks += [kwargs]
-        
+
     if nthreads > 1:
         with mp.Pool(nthreads) as p:
-            list(tqdm(p.imap_unordered(run_thread_wrapper, tasks), total=len(tasks)))  
+            list(tqdm(p.imap_unordered(run_thread_wrapper, tasks), total=len(tasks)))
 
     tasks = []
-    for file in tqdm(shape_files_path, desc="gen structures",
-                     total=len(shape_files_path), ):
+    for file in tqdm(
+        shape_files_path,
+        desc="gen structures",
+        total=len(shape_files_path),
+    ):
         base_name = os.path.basename(parse.parse("{name}.shape", file).named["name"])
         condname = os.path.basename(os.path.dirname(file))
         rna_name = base_name.split("_")[-1]
@@ -178,7 +182,12 @@ def gen_structures(
 
     if nthreads > 1:
         with mp.Pool(nthreads) as p:
-            list(tqdm(p.imap_unordered(run_varna_thread_wrapper, tasks), total=len(tasks)))  
+            list(
+                tqdm(
+                    p.imap_unordered(run_varna_thread_wrapper, tasks), total=len(tasks)
+                )
+            )
+
 
 def main():
     fire.Fire(gen_structures)
