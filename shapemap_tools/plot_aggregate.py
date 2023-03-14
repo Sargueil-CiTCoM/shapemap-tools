@@ -204,7 +204,8 @@ def plot_aggregates(path: str, dnerase: bool = False, nthreads=1):
             gc.collect()
     if nthreads > 1:
         with mp.Pool(nthreads) as pool:
-            tqdm(pool.imap_unordered(plot_aggregate_wrapper, tasks), total=len(tasks))
+            list(tqdm(pool.imap_unordered(plot_aggregate_wrapper, tasks),
+                      total=len(tasks)))
 
 
 def main():

@@ -18,7 +18,7 @@ import warnings
 
 def aggregate_replicates(
     output_path: str = "output",
-    input_dirs: [str] = [],
+    input_path: str = "intput",
     path_config_path: str = None,
     config_path: str = None,
 ):
@@ -27,7 +27,7 @@ def aggregate_replicates(
     else:
         base_config = utils.Config(config_path)
         # # FIXME find info about replicate in config file
-        config = base_config.path_config(input_path=output_path)
+        config = base_config.path_config(input_path=input_path)
 
     sequences = config.sequences
     assert len(sequences) > 0
@@ -63,10 +63,9 @@ def aggregate_replicates(
                     repsdf[rep_id] = curdf
                     # profiles[condname][seqid][rep_id] = curdf["reactivity"]
 
-                except FileNotFoundError:  # as fnfe:
+                except FileNotFoundError as fnfe:
                     # print(lol)
-                    # print(fnfe)
-                    pass
+                    print(fnfe)
             if len(repsdf) > 0:
                 profiles[condname][seqid] = pd.concat(repsdf, axis=1)
                 conds = [

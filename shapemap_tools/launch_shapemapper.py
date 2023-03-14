@@ -29,6 +29,7 @@ def run_shapemapper(
     extra_args: [str] = [],
     shapemapper_path: str = "shapemapper2",
     seq="",
+    verbose=False,
 ):
     random_tmp = "".join(random.choice(string.ascii_lowercase) for i in range(8))
     args = [
@@ -47,12 +48,13 @@ def run_shapemapper(
         f"temp/{name}_{seq}_{random_tmp}",
         "--out",
         output_dir,
-        "--verbose"
     ]
     if indiv_norm:
         args.append("--indiv-norm")
     if overwrite:
         args.append("--overwrite")
+    if verbose:
+        args.append("--verbose")
 
     form_inputs = []
     for condtype in input_fastqs.keys():
@@ -228,7 +230,13 @@ def prepare_launch(config, samples, dnerase=False):
 #    overwrite=True,
 #    extra_args: [str] = [],
 def launch_shapemapper(
-    config_path, samples_path, interactive=False, shapemapper_path=None, dnerase=False
+    config_path,
+    samples_path,
+    interactive=False,
+    shapemapper_path=None,
+    dnerase=False,
+    verbose=False,
+    nthreads=8,
 ):
     samples = pd.read_csv(samples_path, sep="\t")
     samples = samples[samples["discard"] != "yes"]
@@ -302,6 +310,8 @@ def launch_shapemapper(
                     input_fastqs=fastqs,
                     shapemapper_path=shapemapper_path,
                     seq=seq,
+                    verbose=verbose,
+                    cores=nthreads,
                 )
 
 
