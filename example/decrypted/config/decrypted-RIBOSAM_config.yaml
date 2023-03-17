@@ -1,0 +1,31 @@
+data_folders:
+  - demux_fastq/2022-05-13-decrypted-RIBOSAM-rep1-1 
+  - demux_fastq/2022-06-29-decrypted-RIBOSAM-rep1-2 
+  - demux_fastq/2022-08-10-decrypted-RIBOSAM-rep3
+  - demux_fastq/2022-08-10_12-decrypted-RIBOSAM-rep0
+
+sequences:
+  #SAMAP: ../../repos/decrypted/data/1_tagged_sequences/2022-10-27-tagged-aptamer-sequences-natural_artifical_pdb.tsv
+    RIBOSAM: ../../repos/decrypted/data/1_tagged_sequences/2022-10-27-tagged-riboswitch-sam-natural_pdb.tsv
+  #  RIBOSAM-PDB: ../../../decrypted/1_tagged_sequences/2022-01-12-tagged-RIBOSAMN-PDB.tsv
+  #  SAMAP-PDB: ../../../decrypted/1_tagged_sequences/2022-05-13-tagged-SAMAP-PDB-modified.tsv
+shapemapper_output: "results/RIBOSAM"
+shapemapper_output_norm: "results/RIBOSAM-norm-conds"
+
+title_template: "{sequence}_{probe}_{sam}SAM_{magnesium}Mg_T{temperature}C_{replicate}"
+
+split_seq: True
+
+parameters:
+  - probe
+  - sam
+  - magnesium
+  - temperature
+
+samples_file: decrypted-RIBOSAM_samples.tsv
+
+sequence_config:
+  name_col: name
+  seq_col: sequence
+  prefix_cols: []
+  suffix_cols: []
