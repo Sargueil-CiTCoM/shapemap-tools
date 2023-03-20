@@ -246,15 +246,14 @@ def tag_sequences(seqs, tags, primers, name_prefix="APSAMN", threshold=0.30):
 
 
 def gentag(
-    sequences="seq_ribo_concat.fasta",
-    primers="primers.fa",
-    tags="tags.list",
-    prefix="APSAMN",
+    sequences,
+    primers,
+    tags,
+    prefix,
     output="output.tsv",
     threshold=0.30,
     remainingtags=None,
 ):
-
     rnaseqs = [seq.transcribe() for seq in load_dna_seq(sequences)]
     primers = [seq.transcribe() for seq in load_dna_seq(primers)]
     tagseqs = [seq.transcribe() for seq in load_dna_seq(tags)]
