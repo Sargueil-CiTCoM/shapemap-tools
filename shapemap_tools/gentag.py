@@ -227,7 +227,7 @@ def tag_sequences(seqs, tags, primers, name_prefix="APSAMN", threshold=0.30):
                 # dotplot = dotplot_mat(spares_dotplot)
                 if check_tagging(seq, taggedseq, threshold):
                     accepted_seq = TaggedSequence(
-                        seq, taggedseq, primer, tag, name_prefix + str(sid)
+                        seq, taggedseq, primer, tag, name_prefix + str(sid).zfill(3)
                     )
                     del avail_tags[tagid]
                     taken_tags.append(tag)
