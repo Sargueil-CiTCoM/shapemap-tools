@@ -64,7 +64,7 @@ def run_shapemapper(
             form_inputs.extend(fastqs)
 
     cmd = [shapemapper_path] + form_inputs + args
-    # print(" ".join(cmd))
+    #print(" ".join(cmd))
     try:
         sp.run(cmd, capture_output=True, text=True)
     except Exception as e:
@@ -151,6 +151,7 @@ def prepare_launch(config, samples, dnerase=False):
 
             config["sequences"][sample["sequence"]] = fasta_path
             seq_file = fasta_path
+        print(title,seq_file)
         if config["split_seq"]:
             cur_splitted_refs = gen_splitted_ref(
                 seq_file,
@@ -185,10 +186,11 @@ def prepare_launch(config, samples, dnerase=False):
                                     read=readtype,
                                 )
 
-                                # print(f"PATH: {cur_glob_path}")
+                                print(f"PATH: {cur_glob_path}")
                                 fqs = glob.glob(cur_glob_path) + glob.glob(
                                     cur_glob_path_rev
                                 )
+                                print(fqs)
                                 fastqs[condtype][readtype].extend(fqs)
 
                     runs[title][seq] = fastqs
@@ -209,7 +211,7 @@ def prepare_launch(config, samples, dnerase=False):
                         fastqs[condtype][readtype].extend(fqs)
             runs[title] = {"all": fastqs}
             splitted_refs[title] = {"all": seq_file}
-    # print(runs)
+    print("Runs:", runs)
     # print(splitted_refs)
     return runs, splitted_refs
 
@@ -248,18 +250,18 @@ def launch_shapemapper(
 
     assert shapemapper_path is not None
     runs, splitted_refs = prepare_launch(config, samples, dnerase=dnerase)
-
+    print(runs)
     check_all_valid = True
     for title, seqs in runs.items():
-        # print(title)
-        # print(seqs)
+        print(title)
+        print(seqs)
 
         for seq, fastqs in seqs.items():
-            # print(seq)
-            # print(fastqs)
+            print(seq)
+            print(fastqs)
             for condtype, strands in fastqs.items():
-                # print(condtype)
-                # print(strands)
+                print(condtype)
+                print(strands)
                 if len(strands["R1"]) != len(strands["R2"]):
                     print(
                         f"{title} - {seq} - {condtype} : len(R1) {len(strands['R1'])}!= len(R2) {len(strands['R2'])}"
@@ -267,9 +269,9 @@ def launch_shapemapper(
                     check_all_valid = False
 
                 for strandname, strand in strands.items():
-                    # print(strandname)
-                    # print(strand)
-                    # print(len(strand))
+                    print(strandname)
+                    print(strand)
+                    print(len(strand))
                     if len(strand) == 0:
                         print(
                             f"{title} - {seq} - {condtype} - {strandname} : no input files"

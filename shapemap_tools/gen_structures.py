@@ -108,7 +108,7 @@ def run_ipanemap(config, condition, sequence, shape, dbn, outputdir):
     # print(f"End {condition}")
 
 
-def gen_structures(input_dir, output_dir, sequence, configfile=None, nthreads=1):
+def gen_structures(input_dir, output_dir, sequence, configfile=None, nthreads=1, dnerase=False):
     if configfile is None:
         configfile = os.path.join(
             os.path.dirname(__file__), "template", "ipanemap-config.yaml"
@@ -190,6 +190,7 @@ def gen_structures(input_dir, output_dir, sequence, configfile=None, nthreads=1)
 
 
 def main():
+    mp.set_start_method('spawn')
     fire.Fire(gen_structures)
 
 
