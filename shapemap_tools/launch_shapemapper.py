@@ -250,28 +250,28 @@ def launch_shapemapper(
 
     assert shapemapper_path is not None
     runs, splitted_refs = prepare_launch(config, samples, dnerase=dnerase)
-    print(runs)
+    #print(runs)
     check_all_valid = True
     for title, seqs in runs.items():
-        print(title)
-        print(seqs)
+        #print(title)
+        #print(seqs)
 
         for seq, fastqs in seqs.items():
-            print(seq)
-            print(fastqs)
+            #print(seq)
+            #print(fastqs)
             for condtype, strands in fastqs.items():
-                print(condtype)
-                print(strands)
+                #print(condtype)
+                #print(strands)
                 if len(strands["R1"]) != len(strands["R2"]):
-                    print(
-                        f"{title} - {seq} - {condtype} : len(R1) {len(strands['R1'])}!= len(R2) {len(strands['R2'])}"
-                    )
+                    #print(
+                    #    f"{title} - {seq} - {condtype} : len(R1) {len(strands['R1'])}!= len(R2) {len(strands['R2'])}"
+                    #)
                     check_all_valid = False
 
                 for strandname, strand in strands.items():
-                    print(strandname)
-                    print(strand)
-                    print(len(strand))
+                   # print(strandname)
+                   # print(strand)
+                   # print(len(strand))
                     if len(strand) == 0:
                         print(
                             f"{title} - {seq} - {condtype} - {strandname} : no input files"
