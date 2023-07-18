@@ -5,6 +5,7 @@ import fire
 import glob
 import parse
 import tempfile
+import shutil
 from . import fasta
 from tqdm import tqdm
 
@@ -102,13 +103,26 @@ def run_ipanemap(config, condition, sequence, shape, dbn, outputdir):
     # print(" ".join(cmd))
     # print(f"Starting {condition}")
     try:
-        return sp.run(cmd, capture_output=True, text=True).returncode
+        process = sp.run(cmd, capture_output=True, text=True)
+        shutil.rmtree(temp)
+        return process.returncode
     except Exception as e:
+        shutil.rmtree(temp)
         raise e
     # print(f"End {condition}")
 
 
 def gen_structures(input_dir, output_dir, sequence, configfile=None, nthreads=1, dnerase=False):
+    """
+    Parameters
+    ----------
+    input_dir : Folder from which the data are taken
+    output_dir : Where to put structure file (Can be the same as input_dir)
+    sequence : A fasta file containing the sequences
+    configfile : shpm_shapemapper config file
+    nthreads : Number of thread used for parallel computing
+
+    """
     if configfile is None:
         configfile = os.path.join(
             os.path.dirname(__file__), "template", "ipanemap-config.yaml"
