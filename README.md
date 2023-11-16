@@ -10,10 +10,9 @@ Using git repository :
 
 ```bash
 git clone https://src.koda.cnrs.fr/sargueil-citcom/shapemap-tools.git 
-
-conda create --name shapemap-tools --file conda-env.yml
 cd shapemap-tools
-pip install -e shapemap-tools
+conda create --name shapemap-tools --file conda-env.yml
+pip install -e .
 ```
 
 Via conda (not yet available)
