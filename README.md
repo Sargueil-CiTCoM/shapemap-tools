@@ -11,7 +11,7 @@ Using git repository :
 ```bash
 git clone https://src.koda.cnrs.fr/sargueil-citcom/shapemap-tools.git 
 
-conda env create --name shapemap-tools --file conda-env.yml
+conda create --name shapemap-tools --file conda-env.yml
 cd shapemap-tools
 pip install -e shapemap-tools
 ```
