@@ -146,7 +146,7 @@ shpm_gen_structures [input_reactivity_folder] [outputfolder] [input_sequences] -
 
 ### Result viewer
 
-A little to observe and compare member of a RNA family condition by conditions.
+A tool to observe and compare member of a RNA family condition by conditions.
 
 ```bash
 shpm_results_viewer  [folder_containing_conditions] [prefix_of_files_for_this_family]
@@ -163,7 +163,7 @@ shpm_quality_report [folder_containing_conditions]
 
 ### Quality report compare
 
-Compare the quality of to conditions regarding : 
+Compare the quality of two conditions regarding : 
 - Number of read of each RNA
 - Reactivity of each nucleotide of the same RNA molecule.
 
