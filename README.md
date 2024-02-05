@@ -9,7 +9,7 @@ Prior to install shapemap-tools you must install miniconda or micromamba.
 Using git repository :
 
 ```bash
-git clone https://src.koda.cnrs.fr/sargueil-citcom/shapemap-tools.git 
+git clone https://github.com/Sargueil-CiTCoM/shapemap-tools.git 
 cd shapemap-tools
 conda create --name shapemap-tools --file conda-env.yml
 pip install -e .
