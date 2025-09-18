@@ -40,7 +40,8 @@ def plot_aggregate(
     )
     replicates = aggregated.loc[
         :,
-        aggregated.columns.drop(["mean", "stdev", "sem", "mad"]),
+        # aggregated.columns.drop(["mean", "stdev", "sem", "mad"]),
+        aggregated.columns.drop(["mean", "stdev", "sem"]),
     ].replace(-10, np.NaN)
 
     aggregated = aggregated.sort_index()
