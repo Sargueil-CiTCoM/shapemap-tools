@@ -86,11 +86,11 @@ def aggregate_replicates(
                     axis=1, ddof=1
                 )
 
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    profiles[condname][seqid]["mad"] = profiles[condname][seqid][
-                        conds
-                    ].mad(axis=1)
+                # with warnings.catch_warnings():
+                #     warnings.simplefilter("ignore")
+                #     profiles[condname][seqid]["mad"] = profiles[condname][seqid][
+                #         conds
+                #     ].mad(axis=1)
             else:
                 profiles[condname][seqid] = None
 
