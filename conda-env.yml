@@ -5,17 +5,20 @@ channels:
   - sargueil-citcom
 dependencies:
     - cutadapt
-    - python
+    - python=3.9
     - fire
     - pandas
-    - numpy
+    - numpy=1.26.4
     - matplotlib
-    - seaborn
+    - seaborn=0.12
     - jupyter
     - scikit-bio
     - parse
-    - scipy
+    - scipy=1.13.1
     - ruamel.yaml
     - jupyter
     - voila
     - viennarna
+    - varna
+    - ipanemap
+    - tqdm
