@@ -147,7 +147,7 @@ shpm_gen_structures [input_reactivity_folder] [outputfolder] [input_sequences] -
 Compare and interpret chemical reactivity maps obtained in different conditions
 
 ```bash
-shpm_footprint [folder_containing_conditions] [prefix_of_files_for_this_family] [condition1] [condition2] --nthreads=24
+shpm_footprint [folder_containing_conditions] [condition1] [condition2] --nthreads=24
 ```
 
 ## Data Visualization
