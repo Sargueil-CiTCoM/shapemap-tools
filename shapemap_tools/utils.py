@@ -7,7 +7,7 @@ from . import fasta
 yaml = YAML()
 base_path = "{path}/{condition}/"
 compare_base_path = (
-    "{path}/{condition1}/{comp_prefix}{condition1}_{condition2}/"
+    "{path}/{condition1}/{comp_prefix}{condition1}_{condition2}/{seqid}"
 )
 profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
 shape_pattern = base_path + "{condition}_{seqid}.shape"
@@ -25,9 +25,9 @@ plot_profiles_pattern = base_path + "{condition}_{seqid}_profiles.pdf"
 plot_profiles_svg_pattern = base_path + "{condition}_{seqid}_profiles.svg"
 
 # delta_comp_pattern = compare_base_path + "{condition1}{conditions_separator}{condition2}_footprint.svg"
-plot_footprint_svg_pattern = compare_base_path + "{condition1}_{condition2}_footprint.svg"
-plot_footprint_diff_svg_pattern = compare_base_path + "{condition1}_{condition2}_footprint_diff.svg"
-svg_structure_foorprint_pattern = compare_base_path + "{condition1}_{condition2}_footprint_structure.svg"
+plot_footprint_svg_pattern = compare_base_path + "{condition1}_{condition2}_{seqid}_footprint.svg"
+plot_footprint_diff_svg_pattern = compare_base_path + "{condition1}_{condition2}_{seqid}_footprint_diff.svg"
+svg_structure_foorprint_pattern = compare_base_path + "{condition1}_{condition2}_{seqid}_footprint_structure.svg"
 
 
 class ReactivityThreshold:
@@ -106,11 +106,11 @@ def conditions_from_path(project_path, condition_prefix):
 
 
 def comparisons_from_path(
-    project_path, condition_prefix, comp_prefix="comp_", conditions_separator="__"
+    project_path, condition_prefix, seqid, comp_prefix="comp_", conditions_separator="__"
 ):
     return [
         (cond[len(condition_prefix) :] for cond in path.split(conditions_separator))
-        for path in glob.glob(f"{project_path}/{condition_prefix}/{comp_prefix}*")
+        for path in glob.glob(f"{project_path}/{condition_prefix}/{comp_prefix}*/{seqid}")
     ]
 
 
