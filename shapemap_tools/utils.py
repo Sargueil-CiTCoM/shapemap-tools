@@ -7,7 +7,7 @@ from . import fasta
 yaml = YAML()
 base_path = "{path}/{condition}/"
 compare_base_path = (
-    "{path}/{condition1}/{comp_prefix}{condition1}_{condition2}/{seqid}"
+    "{path}/{condition1}/{comp_prefix}{condition1}_{condition2}/{seqid}/"
 )
 profile_pattern = base_path + "{condition}_{seqid}_profile.txt"
 shape_pattern = base_path + "{condition}_{seqid}.shape"
