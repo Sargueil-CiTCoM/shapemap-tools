@@ -377,13 +377,13 @@ def footprint_main(
 
     # if structure_plot is not None:
         # Write annotated structure plot {structure_plot} based on file {structure}
-        structure = f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{prefix}.dbn'
+        structure = f'{path}/{cp1}/{cp1}_{prefix}.dbn'
 
         assert(structure is not None)
         footprint1 = footprint_csv.reset_index().set_index('seqNum')
         higher1 = footprint1['analysis']['significant_higher']
         lower1 = footprint1['analysis']['significant_lower']
-        footprint_2D_plot(structure, higher1, lower1, outfile=f'{cp1}_{cp2}_footprint_structure.svg')
+        footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{cp2}_footprint_structure.svg')
 
 
 def main():
