@@ -326,7 +326,7 @@ def footprint_2D_plot(infile, higher, lower, outfile):
 
 def footprint_main(
     path,
-    prefix,
+    # prefix,
     cond1_name: str = None,
     cond2_name: str = None,
     # deviation_type: str = "stdev",
@@ -348,42 +348,46 @@ def footprint_main(
     for cp1, cp2 in tqdm(conditions, total=len(conditions), desc="Writing files"):
 
         os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}', exist_ok=True)
-        footprint, footprint_csv = footprint_ttest(
-            f'{path}/{cp1}/{cp1}_{prefix}_aggregated.tsv',
-            cp1,
-            f'{path}/{cp2}/{cp2}_{prefix}_aggregated.tsv',
-            cp2,
-            # deviation_type=deviation_type,
-            ttest_pvalue_thres=0.05,
-            diff_thres=0.2,
-            ratio_thres=0.2,
-        )
-
-    # if output is not None:
-        footprint_csv.to_csv(f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{cp2}_footprint.tsv', sep="\t")
-
-    # if plot is not None or diff_plot is not None:
-        plot_reactivity(
-            footprint,
-            plot_title,
-            diff_plot_title,
-            plot_format,
-            output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{cp2}_footprint.svg',
-            diff_output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{cp2}_footprint_diff.svg',
-            # deviation_type=deviation_type,
-            cond1_name=cp1,
-            cond2_name=cp2,
-        )
-
-    # if structure_plot is not None:
-        # Write annotated structure plot {structure_plot} based on file {structure}
-        structure = f'{path}/{cp1}/{cp1}_{prefix}.dbn'
-
-        assert(structure is not None)
-        footprint1 = footprint_csv.reset_index().set_index('seqNum')
-        higher1 = footprint1['analysis']['significant_higher']
-        lower1 = footprint1['analysis']['significant_lower']
-        footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{cp1}_{cp2}_footprint_structure.svg')
+        fnames = os.listdir(f'{path}/{cp1}')
+        rnanames = [f.split('.')[0].split('_')[-1] for f in fnames if f.split('.')[-1] == 'dbn']
+        for prefix in rnanames:
+            os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}', exist_ok=True)
+            footprint, footprint_csv = footprint_ttest(
+                f'{path}/{cp1}/{cp1}_{prefix}_aggregated.tsv',
+                cp1,
+                f'{path}/{cp2}/{cp2}_{prefix}_aggregated.tsv',
+                cp2,
+                # deviation_type=deviation_type,
+                ttest_pvalue_thres=0.05,
+                diff_thres=0.2,
+                ratio_thres=0.2,
+            )
+    
+        # if output is not None:
+            footprint_csv.to_csv(f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.tsv', sep="\t")
+    
+        # if plot is not None or diff_plot is not None:
+            plot_reactivity(
+                footprint,
+                plot_title,
+                diff_plot_title,
+                plot_format,
+                output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.svg',
+                diff_output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_diff.svg',
+                # deviation_type=deviation_type,
+                cond1_name=cp1,
+                cond2_name=cp2,
+            )
+    
+        # if structure_plot is not None:
+            # Write annotated structure plot {structure_plot} based on file {structure}
+            structure = f'{path}/{cp1}/{cp1}_{prefix}.dbn'
+    
+            assert(structure is not None)
+            footprint1 = footprint_csv.reset_index().set_index('seqNum')
+            higher1 = footprint1['analysis']['significant_higher']
+            lower1 = footprint1['analysis']['significant_lower']
+            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.svg')
 
 
 def main():
