@@ -349,7 +349,7 @@ def footprint_main(
 
         os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}', exist_ok=True)
         fnames = os.listdir(f'{path}/{cp1}')
-        rnanames = [f.split('.')[0].split('_')[-1] for f in fnames if f.split('.')[-1] == 'dbn']
+        rnanames = [f.split('_')[-2] for f in fnames if f.split('_')[-1] == 'aggregated.tsv']
         for prefix in rnanames:
             os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}', exist_ok=True)
             footprint, footprint_csv = footprint_ttest(
