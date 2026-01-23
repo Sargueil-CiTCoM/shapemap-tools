@@ -150,6 +150,14 @@ Compare and interpret chemical reactivity maps obtained in different conditions
 shpm_footprint [folder_containing_conditions] [condition1] [condition2] --nthreads=24
 ```
 
+## Structual comparison
+
+Compare two secondary structures
+
+```bash
+shpm_comparison [structure1] [structure2]
+```
+
 ## Data Visualization
 
 ### Result viewer
