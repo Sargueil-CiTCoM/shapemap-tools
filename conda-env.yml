@@ -14,7 +14,7 @@ dependencies:
     - jupyter
     - scikit-bio
     - parse
-    - scipy
+    - scipy=1.9
     - ruamel.yaml
     - voila
     - viennarna
