@@ -395,6 +395,7 @@ def footprint_main(
             higher1 = footprint1['analysis']['significant_higher']
             lower1 = footprint1['analysis']['significant_lower']
             footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.svg')
+            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.varna')
 
 
 def main():
