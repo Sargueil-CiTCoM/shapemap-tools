@@ -37,7 +37,7 @@ class ReactivityThreshold:
     HIGH = 1.0
 
     COLOR_INVALID = "grey"
-    COLOR_NONE = "white"
+    COLOR_NONE = "black"
     COLOR_LOW = "yellow"
     COLOR_MEDIUM = "orange"
     COLOR_HIGH = "red"
