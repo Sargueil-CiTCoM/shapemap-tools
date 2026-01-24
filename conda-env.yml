@@ -21,5 +21,6 @@ dependencies:
     - varna
     - ipanemap
     - tqdm
+    - nbclient=0.7.*
     - pip:
         - varnaapi
