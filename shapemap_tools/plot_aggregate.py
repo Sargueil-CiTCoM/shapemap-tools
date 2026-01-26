@@ -69,16 +69,17 @@ def plot_aggregate(
         drawstyle="steps-mid",
         ax=ax,
         colormap=cm.cubehelix,
-        linewidth=0.5,
+        linewidth=0.5, label="_nolegend_",
     )
+    ax.set_ylim([-0.3, 3])
     ax.set_xlabel("Position")
     ax.set_ylabel("Reactivity")
     ax.grid(axis='y')
     ax.tick_params(labelsize=20)
     # ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
     plt.margins(0)
-    plt.title(title, loc="left")
-    plt.legend(loc="upper left")
+    plt.title(title, loc="left", fontsize=30)
+    plt.legend(loc="upper left", fontsize=15)
     # print(meanstdev)
     ax.errorbar(
         meanstdev.index.get_level_values("seqNum") - 1,
@@ -101,29 +102,30 @@ def plot_aggregate(
     fig, ax = plt.subplots(figsize=(45, 6))
 
     aggregated = aggregated.droplevel(1, axis=1)
-    aggregated["color"] = utils.ReactivityThreshold.COLOR_NONE
+    aggregated["color"] = utils.ReactivityThreshold.COLOR_INVALID
     aggregated.loc[
-        (aggregated["mean"] > utils.ReactivityThreshold.HIGH), "color"
+        (aggregated["mean"] >= utils.ReactivityThreshold.HIGH), "color"
     ] = utils.ReactivityThreshold.COLOR_HIGH
     aggregated.loc[
         (
-            (aggregated["mean"] <= utils.ReactivityThreshold.HIGH)
-            & (aggregated["mean"] > utils.ReactivityThreshold.MEDIUM)
+            (aggregated["mean"] < utils.ReactivityThreshold.HIGH)
+            & (aggregated["mean"] >= utils.ReactivityThreshold.LOW)
         ),
         "color",
     ] = utils.ReactivityThreshold.COLOR_MEDIUM
     aggregated.loc[
         (
-            (aggregated["mean"] <= utils.ReactivityThreshold.MEDIUM)
-            & (aggregated["mean"] > utils.ReactivityThreshold.LOW)
+            (aggregated["mean"] < utils.ReactivityThreshold.LOW)
+            & (aggregated["mean"] >= utils.ReactivityThreshold.INVALID)
         ),
         "color",
     ] = utils.ReactivityThreshold.COLOR_LOW
-    aggregated.loc[
-        (aggregated["mean"] < utils.ReactivityThreshold.INVALID), "color"
-    ] = utils.ReactivityThreshold.COLOR_INVALID
+    # aggregated.loc[
+    #     (aggregated["mean"] < utils.ReactivityThreshold.INVALID), "color"
+    # ] = utils.ReactivityThreshold.COLOR_INVALID
     aggregated.loc[(aggregated["mean"] == -10), "stdev"] = np.NaN
-    aggregated.loc[(aggregated["mean"] == -10), "mean"] = np.NaN
+    # aggregated.loc[(aggregated["mean"] == -10), "mean"] = np.NaN
+    aggregated.loc[np.isnan(aggregated["mean"]), "mean"] = -0.2
     aggregated["xlabel_rot"] = (
         aggregated.index.get_level_values("seqNum").astype(str)
         + " - "
@@ -136,12 +138,12 @@ def plot_aggregate(
         rot=70,
         y="mean",
         kind="bar",
-        width=1,
+        width=0.99,
         color=aggregated["color"],
         yerr="stdev",
         stacked=False,
         capsize=3,
-        xticks=np.arange(0, len(aggregated) + 1, 10),
+        xticks=np.arange(0, len(aggregated) + 1, 10)
     )
     ax = meanstdev[["mean", "xlabel"]].plot(
         x="xlabel",
@@ -149,16 +151,17 @@ def plot_aggregate(
         drawstyle="steps-mid",
         ax=ax,
         colormap=cm.cubehelix,
-        linewidth=0.5,
+        linewidth=0.5
     )
-
+    
+    ax.set_ylim([-0.3, 3])
     ax.set_xlabel("Position")
     ax.set_ylabel("Reactivity")
     ax.grid(axis='y')
     ax.tick_params(labelsize=20)
     plt.margins(0)
-    plt.title(title, loc="left")
-    plt.legend(loc="upper left")
+    plt.title(title, loc="left", fontsize=30)
+    # plt.legend(loc="upper left", fontsize=15)
     try:
         plt.tight_layout()
         # plt.show()

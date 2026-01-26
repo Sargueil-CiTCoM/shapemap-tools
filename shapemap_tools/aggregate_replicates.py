@@ -68,23 +68,18 @@ def aggregate_replicates(
                     print(fnfe)
             if len(repsdf) > 0:
                 profiles[condname][seqid] = pd.concat(repsdf, axis=1)
-                conds = [
-                    col
-                    for col in profiles[condname][seqid].columns
-                    if col[1] == "reactivity"
-                ]
-                profiles[condname][seqid]["mean"] = profiles[condname][seqid][
-                    conds
-                ].mean(axis=1)
-                profiles[condname][seqid]["stdev"] = profiles[condname][seqid][
-                    conds
-                ].std(axis=1, ddof=1)
-                profiles[condname][seqid]["median"] = profiles[condname][seqid][
-                    conds
-                ].median(axis=1)
-                profiles[condname][seqid]["sem"] = profiles[condname][seqid][conds].sem(
-                    axis=1, ddof=1
-                )
+                # conds = [
+                #     col
+                #     for col in profiles[condname][seqid].columns
+                #     if col[1] == "reactivity"
+                # ]
+                data = profiles[condname][seqid].xs('reactivity', axis=1, level=1)
+                data = data.mask((data < 0) & (data >= -1), 0)
+                data = data.mask(data < -1, np.nan)
+                profiles[condname][seqid]["mean"] = data.mean(axis=1, skipna=True)
+                profiles[condname][seqid]["stdev"] = data.std(axis=1, ddof=1, skipna=True)
+                profiles[condname][seqid]["median"] = data.median(axis=1, skipna=True)
+                profiles[condname][seqid]["sem"] = data.sem(axis=1, ddof=1, skipna=True)
 
                 # with warnings.catch_warnings():
                 #     warnings.simplefilter("ignore")

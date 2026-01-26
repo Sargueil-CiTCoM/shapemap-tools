@@ -31,14 +31,14 @@ svg_structure_foorprint_pattern = compare_base_path + "{condition1}_{condition2}
 
 
 class ReactivityThreshold:
-    INVALID = -0.3
+    INVALID = -1
     LOW = 0.40
-    MEDIUM = 0.85
-    HIGH = 1.0
+    # MEDIUM = 0.85
+    HIGH = 0.7
 
-    COLOR_INVALID = "grey"
-    COLOR_NONE = "black"
-    COLOR_LOW = "yellow"
+    COLOR_INVALID = "lightgrey"
+    # COLOR_NONE = "black"
+    COLOR_LOW = "black"
     COLOR_MEDIUM = "orange"
     COLOR_HIGH = "red"
 

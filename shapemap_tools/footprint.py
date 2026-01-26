@@ -190,8 +190,9 @@ def plot_reactivity(
     means = replicates.xs("mean", level=1, axis=1).reset_index()
     means = means.sort_values(by=["seqNum"]).reset_index().drop(["index"], axis=1)
     means["xlabel"] = (means["seqNum"].astype(str) + "\n" + means["sequence"].astype(str))
-    means = means.replace(-10, -0.1)
+    # means = means.replace(-10, -0.1)
     unidmeans = means.drop(["seqNum", "sequence"], axis=1)
+    unidmeans = unidmeans.fillna(-0.2)
 
     stdev = replicates.xs("stdev", level=1, axis=1).reset_index()
     stdev = stdev.sort_values(by=["seqNum"]).reset_index().drop(["index"], axis=1)
@@ -249,8 +250,9 @@ def plot_reactivity(
         unidstdev.iloc[:, 1] = 0
 
     ax.set_xlim([unidmeans.index[0] - 1, unidmeans.index[-1] + 1])
-    ax.set_ylim([min(min(np.nanmin(unidmeans.iloc[:, 0]-unidstdev.iloc[:, 0]),np.nanmin(unidmeans.iloc[:, 1]-unidstdev.iloc[:, 1]))*1.1,-0.15), \
-        max(np.nanmax(unidmeans.iloc[:, 0]+unidstdev.iloc[:, 0]),np.nanmax(unidmeans.iloc[:, 1]+unidstdev.iloc[:, 1]))*1.2])
+    ax.set_ylim([-0.3, 3])
+    # ax.set_ylim([min(min(np.nanmin(unidmeans.iloc[:, 0]-unidstdev.iloc[:, 0]),np.nanmin(unidmeans.iloc[:, 1]-unidstdev.iloc[:, 1]))*1.1,-0.15), \
+        # max(np.nanmax(unidmeans.iloc[:, 0]+unidstdev.iloc[:, 0]),np.nanmax(unidmeans.iloc[:, 1]+unidstdev.iloc[:, 1]))*1.2])
     ax2 = ax.twinx()
     ax2.set_ylim([min(min(np.nanmin(unidmeans.iloc[:, 0]-unidstdev.iloc[:, 0]),np.nanmin(unidmeans.iloc[:, 1]-unidstdev.iloc[:, 1]))*1.1,-0.15), \
         max(np.nanmax(unidmeans.iloc[:, 0]+unidstdev.iloc[:, 0]),np.nanmax(unidmeans.iloc[:, 1]+unidstdev.iloc[:, 1]))*1.2])
