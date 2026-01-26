@@ -161,6 +161,7 @@ def plot_aggregate(
     ax.tick_params(labelsize=20)
     plt.margins(0)
     plt.title(title, loc="left", fontsize=30)
+    plt.legend().remove()
     # plt.legend(loc="upper left", fontsize=15)
     try:
         plt.tight_layout()
