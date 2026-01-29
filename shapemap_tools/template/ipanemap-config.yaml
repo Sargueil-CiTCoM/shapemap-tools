@@ -17,6 +17,7 @@ sampling:
   enable: true
   nstructure: 1000
   temperature: 37
+  pf_scale: 1.07
   slope: 1.3        # b
   intercept: -0.4   # m
 
