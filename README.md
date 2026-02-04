@@ -13,7 +13,7 @@ git clone https://github.com/Sargueil-CiTCoM/shapemap-tools.git
 cd shapemap-tools
 conda env create -f conda-env.yml
 conda activate shapemap-tools
-pip install -e .
+pip install .
 ```
 
 Via conda (not yet available)
