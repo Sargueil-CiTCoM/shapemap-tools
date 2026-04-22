@@ -356,11 +356,11 @@ def footprint_main(
 
     for cp1, cp2 in tqdm(conditions, total=len(conditions), desc="Writing files"):
 
-        os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}', exist_ok=True)
+        os.makedirs(f'{path}/{cp1}/footprint_{cp1}_{cp2}', exist_ok=True)
         fnames = os.listdir(f'{path}/{cp1}')
         rnanames = [f.split('_')[-2] for f in fnames if f.split('_')[-1] == 'aggregated.tsv']
         for prefix in rnanames:
-            os.makedirs(f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}', exist_ok=True)
+            os.makedirs(f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}', exist_ok=True)
             footprint, footprint_csv = footprint_ttest(
                 f'{path}/{cp1}/{cp1}_{prefix}_aggregated.tsv',
                 cp1,
@@ -373,7 +373,7 @@ def footprint_main(
             )
     
         # if output is not None:
-            footprint_csv.to_csv(f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.tsv', sep="\t")
+            footprint_csv.to_csv(f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.tsv', sep="\t")
     
         # if plot is not None or diff_plot is not None:
             plot_reactivity(
@@ -381,8 +381,8 @@ def footprint_main(
                 plot_title,
                 diff_plot_title,
                 plot_format,
-                output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.svg',
-                diff_output=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_diff.svg',
+                output=f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint.svg',
+                diff_output=f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_diff.svg',
                 # deviation_type=deviation_type,
                 cond1_name=cp1,
                 cond2_name=cp2,
@@ -396,8 +396,8 @@ def footprint_main(
             footprint1 = footprint_csv.reset_index().set_index('seqNum')
             higher1 = footprint1['analysis']['significant_higher']
             lower1 = footprint1['analysis']['significant_lower']
-            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.svg')
-            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/comp_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.varna')
+            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.svg')
+            footprint_2D_plot(structure, higher1, lower1, outfile=f'{path}/{cp1}/footprint_{cp1}_{cp2}/{prefix}/{cp1}_{cp2}_{prefix}_footprint_structure.varna')
 
 
 def main():
