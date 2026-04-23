@@ -38,11 +38,11 @@ def run_varna_thread(config, condition, rna, sequence, shape, outputdir):
 
 
 def runVARNA(struct_file, shape_file, title, output_file, resolution=1.0):
-    colormap = (
-        "$-10.00:#CCCCCC,$-0.3001:#999999,$-0.30:#FFFFFF,$0.39999:#FFFFFF"
-        ",$0.40:#FFFF47,$0.8499:#FFFF47,$0.85:#FF0000,10:#FF0000"
+    colormap = ("$-0.5:#999999,$-0.49999:#FFFFFF,$0.4:#FFFFFF,$0.40001:#FAE902,$0.7:#FAE902,$0.70001:#E80C0C,$5.00:#E80C0C"
+        # "$-10.00:#CCCCCC,$-0.3001:#999999,$-0.30:#FFFFFF,$0.39999:#FFFFFF"
+        # ",$0.40:#FFFF47,$0.8499:#FFFF47,$0.85:#FF0000,10:#FF0000"
     )
-
+    
     cmd = [
         "java",
         "-jar",
