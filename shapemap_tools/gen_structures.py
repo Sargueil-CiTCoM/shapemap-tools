@@ -9,7 +9,9 @@ import shutil
 from . import fasta
 from tqdm import tqdm
 
-varna_path = os.path.join(os.path.dirname(__file__), "VARNAcmd.jar")
+# varna_path = os.path.join(os.path.dirname(__file__), "VARNAcmd.jar")
+conda_env = os.environ.get("CONDA_PREFIX")
+varna_path = f'{conda_env}/lib/varna/VARNA.jar'
 
 
 def run_varna_thread_wrapper(args):
