@@ -114,6 +114,21 @@ def comparisons_from_path(
     ]
 
 
+def fasta2tsv(input_fasta, output_tsv):
+    sequences = {}
+    rnaname = None
+    with open(input_fasta, 'r') as fasta:
+        for line in fasta:
+            line = line.strip()
+            if line.startswith('>'):
+                rnaname = line[1:]
+                sequences[rnaname] = ''
+            elif rnaname:
+                sequences[rnaname] += line
+    
+    df = pd.DataFrame(sequences.items(), columns=['name', 'sequence'])
+    df.to_csv(output_tsv, index=False, sep='\t')
+
 class Config:
     def __init__(self, config_path):
         with open(config_path, "r") as config_file:
@@ -127,6 +142,9 @@ class Config:
         self.sequences_id = set()
         # print(self.config["sequences"])
         for seqs_id, seqs_path in self.config["sequences"].items():
+            if os.path.splitext(seqs_path)[1].lower() == '.fasta':
+               fasta2tsv(seqs_path, os.path.splitext(seqs_path)[0] + '.tsv')
+               seqs_path = os.path.splitext(seqs_path)[0] + '.tsv'
             df = pd.read_csv(seqs_path, sep="\t")
             self.sequences_id = self.sequences_id.union(df["name"])
 

@@ -122,6 +122,22 @@ def get_config(config, path, default):
     return cur_conf
 
 
+def fasta2tsv(input_fasta, output_tsv):
+    sequences = {}
+    rnaname = None
+    with open(input_fasta, 'r') as fasta:
+        for line in fasta:
+            line = line.strip()
+            if line.startswith('>'):
+                rnaname = line[1:]
+                sequences[rnaname] = ''
+            elif rnaname:
+                sequences[rnaname] += line
+    
+    df = pd.DataFrame(sequences.items(), columns=['name', 'sequence'])
+    df.to_csv(output_tsv, index=False, sep='\t')
+
+
 def prepare_launch(config, samples, dnerase=False):
     runs = {}
     splitted_refs = {}
@@ -137,6 +153,9 @@ def prepare_launch(config, samples, dnerase=False):
         title = config["title_template"].format(**dict(sample))
         seq_file = config["sequences"][sample["sequence"]]
         runs[title] = {}
+        if os.path.splitext(seq_file)[1].lower() == '.fasta':
+           fasta2tsv(seq_file, os.path.splitext(seq_file)[0] + '.tsv')
+        seq_file = os.path.splitext(seq_file)[0] + '.tsv'
         if os.path.splitext(seq_file)[-1] in [".tsv", ".csv"]:
             seq_filename = os.path.basename(seq_file).split(".")[0]
             fasta_path = os.path.join(
