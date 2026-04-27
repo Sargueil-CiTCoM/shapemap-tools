@@ -316,9 +316,12 @@ def footprint_2D_plot(infile, higher, lower, outfile):
         vecs[i] = str(pos).replace(' ','')[1:-1]
 
     import os 
-    conda_prefix = os.environ.get("CONDA_PREFIX")
+    from pathlib import Path
+    conda_env = os.environ.get("CONDA_PREFIX")
+    varna_dir = Path(conda_env) / 'lib' / 'varna'
+    jar_files = list(varna_dir.glob('*.jar'))
 
-    varna_cmd = ['java', '-jar', f'{conda_prefix}/lib/varna/VARNA.jar',
+    varna_cmd = ['java', '-jar', jar_files[0],
                  #'-sequenceDBN', sequence,
                  #'-structureDBN', structure,
                  '-i', infile,

@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 import sys
 import RNA
 import pandas as pd
@@ -59,8 +60,10 @@ def structural_comparison(filename1, filename2):
         return model, proportion
 
     def varnaplot(model_info, color, path):
-        conda_prefix = os.environ.get("CONDA_PREFIX")
-        varnaapi.set_VARNA(f'{conda_prefix}/lib/varna/VARNA.jar')
+        conda_env = os.environ.get("CONDA_PREFIX")
+        varna_dir = Path(conda_env) / 'lib' / 'varna'
+        jar_files = list(varna_dir.glob('*.jar'))
+        varnaapi.set_VARNA(jar_files[0])
         v = varnaapi.Structure(sequence=model_info['sequence'], structure=model_info['secondary_structure'])
         v.set_algorithm('radiate')
         v.update(bpStyle="lw", spaceBetweenBases=0.75, bpIncrement=1.3)

@@ -1,6 +1,7 @@
 import subprocess as sp
 import multiprocessing as mp
 import os
+from pathlib import Path
 import fire
 import glob
 import parse
@@ -11,7 +12,9 @@ from tqdm import tqdm
 
 # varna_path = os.path.join(os.path.dirname(__file__), "VARNAcmd.jar")
 conda_env = os.environ.get("CONDA_PREFIX")
-varna_path = f'{conda_env}/lib/varna/VARNA.jar'
+varna_dir = Path(conda_env) / 'lib' / 'varna'
+jar_files = list(varna_dir.glob('*.jar'))
+varna_path = jar_files[0]
 
 
 def run_varna_thread_wrapper(args):
