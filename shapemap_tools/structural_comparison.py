@@ -93,7 +93,9 @@ def structural_comparison(filename1, filename2):
                 if j not in ['sequence', 'secondary_structure']:
                     file_paths[f'{j}_file_path'] = f'./comparaison_models/{output_name}/{j}.txt'
                     varnaplot_path = f'./comparaison_models/{output_name}/{j}.varna'
+                    svgplot_path = f'./comparaison_models/{output_name}/{j}.svg'
                     varnaplot(model_vs, model_vs[j], varnaplot_path)
+                    varnaplot(model_vs, model_vs[j], svgplot_path)
             for pp in proportion_vs:
                 with open(f'./comparaison_models/{output_name}/{pp}.txt', "w", encoding="utf-8") as f:
                     f.write('Proportion :\n')
